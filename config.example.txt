@@ -1,0 +1,22 @@
+# ─────────────────────────────────────────────────────────────
+#  Crate: your playlists and shortcuts
+#  Save this file and Crate picks up the changes right away.
+# ─────────────────────────────────────────────────────────────
+
+[playlists]
+# One Spotify link per line (in Spotify: ••• › Share › Copy link to playlist).
+# Optionally put a name in front:   My name = link
+# Albums and artists work too. The first 10 can be picked with keys 1…0.
+
+Top Hits = https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M
+Lofi = https://open.spotify.com/playlist/37i9dQZF1DWWQRwui0ExPn
+Rap = https://open.spotify.com/playlist/37i9dQZF1DX0XUsuxWHRQd
+
+[shortcuts]
+# Modifiers: cmd, option, ctrl, shift. Keys are named after where they sit
+# on a US keyboard: on a French/Belgian AZERTY keyboard, 0 is the à key,
+# - is the ) key and = is the - key. Write "none" to turn one off.
+
+picker = cmd+option+0
+lyrics = cmd+option+-
+next = cmd+option+=

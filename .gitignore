@@ -1,0 +1,5 @@
+Crate.app/
+config.txt
+covers/*
+!covers/.gitkeep
+.DS_Store
