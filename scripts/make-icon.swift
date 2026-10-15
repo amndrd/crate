@@ -19,8 +19,10 @@ func draw(_ size: Int) -> CGImage {
     ctx.drawLinearGradient(CGGradient(colorsSpace: rgb, colors: [CGColor(red: 0.2, green: 0.16, blue: 0.26, alpha: 1),
                                                                 CGColor(red: 0.07, green: 0.06, blue: 0.09, alpha: 1)] as CFArray, locations: [0, 1])!,
                            start: CGPoint(x: 0, y: 924 * u), end: CGPoint(x: 0, y: 100 * u), options: [])
-    // Record
-    let c = CGPoint(x: 600 * u, y: 512 * u), r = 270 * u
+    // Sleeve and record: like a real one, the record is a bit smaller than its sleeve
+    let sleeve = CGRect(x: 160 * u, y: 282 * u, width: 460 * u, height: 460 * u)
+    let r = sleeve.width * 0.95 / 2
+    let c = CGPoint(x: sleeve.minX + sleeve.width * 0.55 + r, y: sleeve.midY)
     ctx.setShadow(offset: CGSize(width: 6 * u, height: -8 * u), blur: 20 * u, color: CGColor(gray: 0, alpha: 0.6))
     ctx.setFillColor(CGColor(gray: 0.06, alpha: 1))
     ctx.fillEllipse(in: CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r))
@@ -29,7 +31,7 @@ func draw(_ size: Int) -> CGImage {
     while gr < r - 4 * u {
         ctx.setStrokeColor(CGColor(gray: 1, alpha: i % 3 == 0 ? 0.12 : 0.05)); ctx.setLineWidth(1.2 * u)
         ctx.strokeEllipse(in: CGRect(x: c.x - gr, y: c.y - gr, width: 2 * gr, height: 2 * gr))
-        gr += 7 * u; i += 1
+        gr += 6.5 * u; i += 1
     }
     let lr = r * 0.36
     ctx.setFillColor(CGColor(red: 0.11, green: 0.73, blue: 0.33, alpha: 1))
@@ -37,7 +39,6 @@ func draw(_ size: Int) -> CGImage {
     ctx.setFillColor(CGColor(gray: 0.05, alpha: 1))
     ctx.fillEllipse(in: CGRect(x: c.x - 12 * u, y: c.y - 12 * u, width: 24 * u, height: 24 * u))
     // Sleeve
-    let sleeve = CGRect(x: 200 * u, y: 262 * u, width: 500 * u, height: 500 * u)
     ctx.setShadow(offset: CGSize(width: 10 * u, height: -10 * u), blur: 30 * u, color: CGColor(gray: 0, alpha: 0.55))
     ctx.addPath(CGPath(roundedRect: sleeve, cornerWidth: 14 * u, cornerHeight: 14 * u, transform: nil))
     ctx.setFillColor(CGColor(red: 0.11, green: 0.73, blue: 0.33, alpha: 1)); ctx.fillPath()
@@ -48,8 +49,8 @@ func draw(_ size: Int) -> CGImage {
                            start: CGPoint(x: sleeve.minX, y: sleeve.maxY), end: CGPoint(x: sleeve.maxX, y: sleeve.minY), options: [])
     // Three bars, like sound waves, on the sleeve
     ctx.setFillColor(CGColor(gray: 1, alpha: 0.92))
-    for (k, h) in [150.0, 250.0, 190.0].enumerated() {
-        let w = 46 * u, x = sleeve.midX - 110 * u + CGFloat(k) * 85 * u
+    for (k, h) in [138.0, 230.0, 175.0].enumerated() {
+        let w = 42 * u, x = sleeve.midX - 99 * u + CGFloat(k) * 78 * u
         ctx.addPath(CGPath(roundedRect: CGRect(x: x, y: sleeve.midY - CGFloat(h) * u / 2, width: w, height: CGFloat(h) * u),
                            cornerWidth: w / 2, cornerHeight: w / 2, transform: nil))
         ctx.fillPath()
