@@ -20,9 +20,11 @@ func draw(_ size: Int) -> CGImage {
                                                                 CGColor(red: 0.07, green: 0.06, blue: 0.09, alpha: 1)] as CFArray, locations: [0, 1])!,
                            start: CGPoint(x: 0, y: 924 * u), end: CGPoint(x: 0, y: 100 * u), options: [])
     // Sleeve and record: like a real one, the record is a bit smaller than its sleeve
-    let sleeve = CGRect(x: 160 * u, y: 282 * u, width: 460 * u, height: 460 * u)
-    let r = sleeve.width * 0.95 / 2
-    let c = CGPoint(x: sleeve.minX + sleeve.width * 0.55 + r, y: sleeve.midY)
+    // The pair (sleeve + the part of the record sticking out) is centered in the icon
+    let side = 460 * u, r = side * 0.95 / 2, out = side * 0.32
+    let left = (s - (out + 2 * r)) / 2
+    let sleeve = CGRect(x: left, y: (s - side) / 2, width: side, height: side)
+    let c = CGPoint(x: left + out + r, y: sleeve.midY)
     ctx.setShadow(offset: CGSize(width: 6 * u, height: -8 * u), blur: 20 * u, color: CGColor(gray: 0, alpha: 0.6))
     ctx.setFillColor(CGColor(gray: 0.06, alpha: 1))
     ctx.fillEllipse(in: CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r))
