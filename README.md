@@ -27,7 +27,7 @@
 | | |
 |---|---|
 | **⌘ ⌥ 0 · Pick a playlist** | A grid of record sleeves pops up. Hover one and the vinyl slides out and spins, the background takes the color of the cover. Click it (or press its number) and it starts playing on shuffle. Spotify stays hidden, even if it was closed. |
-| **⌘ ⌥ - · Lyrics** | A floating window shows the lyrics of the current song, synced line by line like karaoke. Click a line to jump to that moment in the song. |
+| **⌘ ⌥ - · Lyrics** | A floating window shows the lyrics of the current song, synced line by line like karaoke. Click a line to jump to that moment in the song. The button next to × shrinks it to a small strip with just the current and next lines. |
 | **⌘ ⌥ = · Next track** | Skips to the next song, from any app. |
 
 <p align="center">

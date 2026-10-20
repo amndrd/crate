@@ -4,6 +4,10 @@ import SwiftUI
 // Lyrics window for the track playing in Spotify, synced karaoke-style.
 // Lyrics come from LRCLIB (free, open database) and are cached in ~/Library/Caches/Crate/lyrics.
 // Floats above other windows without stealing focus; click a line to jump there in the song.
+// The button left of × shrinks it to a small strip with just the current and next lines (remembered between openings).
+
+let fullSize = NSSize(width: 400, height: 560)
+let compactSize = NSSize(width: 400, height: 116)
 
 struct Line: Codable {
     let t: Double
@@ -101,6 +105,10 @@ final class Player: ObservableObject {
     @Published var current: Int?
     /// LRCLIB couldn't be reached: retried a bit later
     @Published var unavailable = false
+    /// Window shrunk to the current and next lines
+    @Published var compact = UserDefaults.standard.bool(forKey: "compactLyrics") {
+        didSet { UserDefaults.standard.set(compact, forKey: "compactLyrics") }
+    }
 
     /// Position (s) reported by Spotify at `syncedAt`: interpolated in between
     private var progress = 0.0
@@ -213,18 +221,46 @@ final class Player: ObservableObject {
 
 struct LyricsView: View {
     @ObservedObject var player: Player
+    /// Shrink/expand button: LyricsController.setCompact drives the window and the animation
+    let toggleCompact: () -> Void
     let onClose: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            content.frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Each layout keeps its own fixed size: the animated card crops them instead of laying them out again
+        ZStack(alignment: .top) {
+            if player.compact {
+                compactLayout.transition(.soft)
+            } else {
+                fullLayout.transition(.soft)
+            }
         }
-        .frame(width: 400, height: 560)
-        .background(background)
+        .frame(width: fullSize.width, height: (player.compact ? compactSize : fullSize).height, alignment: .top)
+        .overlay(alignment: .topTrailing) { buttons.padding(.top, 29).padding(.trailing, 16) }
+        .background(LinearGradient(colors: [.black.opacity(0.2), .black.opacity(0.5)], startPoint: .top, endPoint: .bottom))
+        .background(alignment: .top) { coverBackground }
+        .background(VisualEffect())
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(.white.opacity(0.1), lineWidth: 1))
         .environment(\.colorScheme, .dark)
+        // During the animation the window can be taller than the card: the card stays at the top
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    var fullLayout: some View {
+        VStack(spacing: 0) {
+            header
+            content(compact: false).frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(width: fullSize.width, height: fullSize.height)
+    }
+
+    /// The current line (left of the buttons) and the next one
+    var compactLayout: some View {
+        content(compact: true)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .frame(width: compactSize.width, height: compactSize.height)
     }
 
     var header: some View {
@@ -245,20 +281,34 @@ struct LyricsView: View {
                     .foregroundColor(.white.opacity(0.6))
             }
             .lineLimit(1)
-            Spacer(minLength: 0)
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(.white.opacity(0.7))
-                    .frame(width: 20, height: 20)
-                    .background(Circle().fill(.white.opacity(0.12)))
-            }
-            .buttonStyle(.plain)
+            Spacer(minLength: 48)   // room for the buttons, laid on top
         }
         .padding(16)
     }
 
-    @ViewBuilder var content: some View {
+    var buttons: some View {
+        HStack(spacing: 8) {
+            roundButton(player.compact ? "arrow.up.left.and.arrow.down.right" : "arrow.down.right.and.arrow.up.left",
+                        action: toggleCompact)
+            .help(player.compact ? L("Expand", "Agrandir") : L("Shrink", "Réduire"))
+            roundButton("xmark", action: onClose)
+        }
+    }
+
+    func roundButton(_ symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .contentTransition(.symbolEffect(.replace))
+                .font(.system(size: 9, weight: .bold))
+                .foregroundColor(.white.opacity(0.7))
+                .frame(width: 20, height: 20)
+                .background(Circle().fill(.white.opacity(0.12)))
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// `compact` is passed explicitly: during the transition both layouts are on screen
+    @ViewBuilder func content(compact: Bool) -> some View {
         if !player.ready || (player.track != nil && player.track?.isAd == false && player.lyrics == nil) {
             ProgressView().controlSize(.small)
         } else if player.track == nil {
@@ -266,7 +316,13 @@ struct LyricsView: View {
         } else if player.track?.isAd == true {
             message(L("Advertisement", "Publicité"))
         } else if let lines = player.lyrics?.synced {
-            SyncedLyrics(lines: lines, current: player.current) { player.seek(to: $0) }.id(player.track?.id)
+            if compact {
+                CompactLyrics(lines: lines, current: player.current).id(player.track?.id)
+            } else {
+                SyncedLyrics(lines: lines, current: player.current) { player.seek(to: $0) }.id(player.track?.id)
+            }
+        } else if player.lyrics?.plain != nil && compact {
+            message(L("Lyrics not synced", "Paroles non synchronisées"))
         } else if let plain = player.lyrics?.plain {
             ScrollView(showsIndicators: false) {
                 Text(plain)
@@ -291,10 +347,9 @@ struct LyricsView: View {
         Text(text).font(.system(size: 15, weight: .medium)).foregroundColor(.white.opacity(0.5))
     }
 
-    /// Blurred cover in the background
-    var background: some View {
+    /// Blurred cover in the background, pinned to the top so it doesn't slide when the card changes size
+    var coverBackground: some View {
         ZStack {
-            VisualEffect()
             if let cover = player.cover {
                 Image(nsImage: cover).resizable().aspectRatio(contentMode: .fill)
                     .frame(width: 560, height: 560)
@@ -302,9 +357,25 @@ struct LyricsView: View {
                     .opacity(0.6)
                     .transition(.opacity)
             }
-            LinearGradient(colors: [.black.opacity(0.2), .black.opacity(0.5)], startPoint: .top, endPoint: .bottom)
         }
     }
+}
+
+/// Fade with a little blur, zoom and slide: to go from one layout to the other
+struct SoftFade: ViewModifier {
+    let amount: Double
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(1 - amount)
+            .blur(radius: 8 * amount)
+            .scaleEffect(1 - 0.04 * amount, anchor: .top)
+            .offset(y: 10 * amount)
+    }
+}
+
+extension AnyTransition {
+    static let soft = AnyTransition.modifier(active: SoftFade(amount: 1), identity: SoftFade(amount: 0))
 }
 
 /// Fade at the top and bottom of the lyrics
@@ -340,13 +411,61 @@ struct SyncedLyrics: View {
                 .padding(.vertical, 220)
             }
             .mask(fadeEdges)
-            .onAppear { if let current { proxy.scrollTo(current, anchor: UnitPoint(x: 0, y: 0.35)) } }
+            .onAppear {
+                // No animation: coming back from the small strip, the list must already be on the right line
+                guard let current else { return }
+                var instant = Transaction()
+                instant.disablesAnimations = true
+                withTransaction(instant) { proxy.scrollTo(current, anchor: UnitPoint(x: 0, y: 0.35)) }
+            }
             .onChange(of: current) { _, new in
                 guard let new else { return }
                 withAnimation(.spring(response: 0.7, dampingFraction: 0.85)) { proxy.scrollTo(new, anchor: UnitPoint(x: 0, y: 0.35)) }
             }
         }
         .animation(.easeOut(duration: 0.35), value: current)
+    }
+}
+
+/// Small strip: the current line, and the next one dimmer
+struct CompactLyrics: View {
+    let lines: [Line]
+    let current: Int?
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            pair.id(current)
+                .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity),
+                                        removal: .move(edge: .top).combined(with: .opacity)))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .clipped()
+        .animation(.spring(response: 0.5, dampingFraction: 0.85), value: current)
+    }
+
+    /// Long lines shrink until they fit whole, instead of being cut with "…"
+    var pair: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(text(current ?? -1))
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(.white)
+                .lineLimit(3)
+                .minimumScaleFactor(0.5)
+                .frame(maxHeight: 58, alignment: .bottomLeading)
+                .padding(.trailing, 60)   // room for the buttons
+            Text(text((current ?? -1) + 1))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.white.opacity(0.42))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Before the first line: ♪ ; after the last one: nothing
+    func text(_ i: Int) -> String {
+        guard i < lines.count else { return "" }
+        return i < 0 || lines[i].text.isEmpty ? "♪" : lines[i].text
     }
 }
 
@@ -363,16 +482,20 @@ final class LyricsController {
 
     func show() {
         let player = Player()
-        let host = HostingView(rootView: LyricsView(player: player) { [weak self] in self?.close() })
-        host.frame.size = host.fittingSize
+        let host = HostingView(rootView: LyricsView(player: player,
+                                                    toggleCompact: { [weak self] in self?.setCompact(!player.compact) },
+                                                    onClose: { [weak self] in self?.close() }))
+        host.sizingOptions = []   // the window decides the size, not SwiftUI
+        let size = player.compact ? compactSize : fullSize
         // Doesn't take the focus: you keep working in the app in front
         let panel = Panel(content: host)
         // Reopens where it was left, otherwise on the right of the screen under the mouse
         if !panel.setFrameUsingName("CrateLyrics") {
             let f = screenUnderMouse()
-            panel.setFrameOrigin(NSPoint(x: f.maxX - host.frame.width - 24, y: f.midY - host.frame.height / 2))
+            panel.setFrameOrigin(NSPoint(x: f.maxX - size.width - 24, y: f.midY - size.height / 2))
         }
         panel.setFrameAutosaveName("CrateLyrics")
+        resize(panel, compact: player.compact)   // the saved size may be the other mode's
         panel.fadeIn(duration: 0.2)
         player.start()
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -381,6 +504,32 @@ final class LyricsController {
         }
         self.panel = panel
         self.player = player
+    }
+
+    /// The card animates in SwiftUI; the (transparent) window grows before or shrinks after, invisibly
+    func setCompact(_ compact: Bool) {
+        guard let panel, let player else { return }
+        if !compact { resize(panel, compact: false) }
+        withAnimation(.spring(duration: 0.5, bounce: 0), completionCriteria: .removed) {
+            player.compact = compact
+        } completion: { [self] in
+            // Clicked again meanwhile: the other animation decides
+            if compact && player.compact && self.panel === panel { resize(panel, compact: true) }
+            panel.invalidateShadow()
+        }
+        // The window shadow follows the card's shape during the animation
+        let shadow = Timer(timeInterval: 1.0 / 60, repeats: true) { _ in panel.invalidateShadow() }
+        RunLoop.main.add(shadow, forMode: .common)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { shadow.invalidate() }
+    }
+
+    /// Size of the mode, keeping the top of the window in place (without leaving the screen)
+    private func resize(_ panel: Panel, compact: Bool) {
+        let size = compact ? compactSize : fullSize
+        var frame = NSRect(x: panel.frame.minX, y: panel.frame.maxY - size.height, width: size.width, height: size.height)
+        if let visible = panel.screen?.visibleFrame { frame.origin.y = max(frame.minY, visible.minY) }
+        panel.setFrame(frame, display: true)
+        panel.invalidateShadow()
     }
 
     func close() {
