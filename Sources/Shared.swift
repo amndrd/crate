@@ -8,17 +8,54 @@ let commandNotification = Notification.Name(bundleID + ".command")
 let isFrench = Locale.preferredLanguages.first?.hasPrefix("fr") == true
 func L(_ english: String, _ french: String) -> String { isFrench ? french : english }
 
-/// Project folder: the one holding Crate.app and config.txt
-let projectDir: URL = {
-    let exe = (Bundle.main.executableURL ?? URL(fileURLWithPath: CommandLine.arguments[0])).resolvingSymlinksInPath()
-    var dir = exe.deletingLastPathComponent()
-    // .../crate/Crate.app/Contents/MacOS/Crate -> .../crate
-    if dir.path.hasSuffix(".app/Contents/MacOS") {
-        dir = dir.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+/// Project folder: the one holding Crate.app and config.txt.
+/// Followed through moves with a bookmark (what Finder aliases use): if the folder is moved while Crate runs,
+/// Crate keeps finding config.txt and points its login item at the new place, so it still starts at next login.
+enum Project {
+    private(set) static var dir: URL = {
+        let exe = (Bundle.main.executableURL ?? URL(fileURLWithPath: CommandLine.arguments[0])).resolvingSymlinksInPath()
+        var dir = exe.deletingLastPathComponent()
+        // .../crate/Crate.app/Contents/MacOS/Crate -> .../crate
+        if dir.path.hasSuffix(".app/Contents/MacOS") {
+            dir = dir.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        }
+        return dir
+    }()
+    private static var bookmark = try? dir.bookmarkData()
+
+    /// Checks where the folder is now; called every couple of seconds
+    static func follow() {
+        guard let data = bookmark else { return }
+        var stale = false
+        guard let now = try? URL(resolvingBookmarkData: data, options: [.withoutUI, .withoutMounting], bookmarkDataIsStale: &stale) else { return }
+        if stale { bookmark = try? now.bookmarkData() }
+        let old = dir
+        guard now.standardizedFileURL.path != old.standardizedFileURL.path else { return }
+        dir = now
+        log("Folder moved to \(now.path)")
+        pointLoginItem(from: old, to: now)
     }
-    return dir
-}()
-let configURL = projectDir.appendingPathComponent("config.txt")
+
+    /// Rewrites the login item written by install.sh, if it still points into the old folder
+    private static func pointLoginItem(from old: URL, to new: URL) {
+        let plist = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/LaunchAgents/\(bundleID).plist")
+        guard let data = try? Data(contentsOf: plist),
+              var dict = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+              var args = dict["ProgramArguments"] as? [String], let exe = args.first else { return }
+        // Symlink resolution turns /private/tmp/… into /tmp/…: compare without that prefix
+        let bare = { (path: String) in path.hasPrefix("/private/") ? String(path.dropFirst("/private".count)) : path }
+        let oldDir = bare(old.path) + "/"
+        guard bare(exe).hasPrefix(oldDir) else { return }
+        args[0] = new.path + "/" + bare(exe).dropFirst(oldDir.count)
+        dict["ProgramArguments"] = args
+        if let out = try? PropertyListSerialization.data(fromPropertyList: dict, format: .xml, options: 0) {
+            try? out.write(to: plist, options: .atomic)
+        }
+    }
+}
+
+var projectDir: URL { Project.dir }
+var configURL: URL { projectDir.appendingPathComponent("config.txt") }
 let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("Crate")
 
 let spotifyGreen = Color(red: 0.11, green: 0.73, blue: 0.33)

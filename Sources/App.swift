@@ -26,8 +26,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         picker.playingURI = { [weak self] in self?.lastPlayed }
         picker.onPick = { [weak self] entry in self?.play(entry) }
 
-        // config.txt is re-read as soon as it's saved
-        let watcher = Timer(timeInterval: 2, repeats: true) { [weak self] _ in self?.reloadConfigIfChanged() }
+        // config.txt is re-read as soon as it's saved, even if the folder was moved meanwhile
+        let watcher = Timer(timeInterval: 2, repeats: true) { [weak self] _ in
+            Project.follow()
+            self?.reloadConfigIfChanged()
+        }
         RunLoop.main.add(watcher, forMode: .common)
 
         // Commands from `Crate picker` etc. Delivered even while Crate is in the background

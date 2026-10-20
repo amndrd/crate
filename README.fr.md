@@ -75,7 +75,7 @@ git clone https://github.com/amndrd/crate.git ~/Crate && ~/Crate/install.sh
 
 Elle télécharge Crate dans un dossier `Crate` de ton dossier personnel, compile l'app et la lance automatiquement à chaque ouverture de session. À la fin, `config.txt` s'ouvre dans TextEdit.
 
-> Laisse le dossier où il est. Si tu le déplaces, relance `./install.sh` depuis son nouvel emplacement. Évite le Bureau, Documents et Téléchargements : macOS protège ces dossiers et demanderait une autorisation en plus.
+> Tu peux déplacer le dossier plus tard : Crate le suit et continue de se lancer à l'ouverture de session. Évite le Bureau, Documents et Téléchargements : macOS protège ces dossiers et demanderait une autorisation en plus.
 
 ### 3. Ajouter tes playlists
 

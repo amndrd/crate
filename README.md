@@ -75,7 +75,7 @@ git clone https://github.com/amndrd/crate.git ~/Crate && ~/Crate/install.sh
 
 This downloads Crate into a `Crate` folder in your home folder, builds the app and sets it to start automatically when you log in. When it's done, `config.txt` opens in TextEdit.
 
-> Keep the folder where it is. If you move it, run `./install.sh` again from its new location. Avoid putting it in Desktop, Documents or Downloads: macOS protects those folders and would ask for extra permission.
+> You can move the folder later: Crate follows it and keeps starting at login. Avoid putting it in Desktop, Documents or Downloads: macOS protects those folders and would ask for extra permission.
 
 ### 3. Add your playlists
 

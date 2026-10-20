@@ -1,6 +1,6 @@
 #!/bin/bash
 # Installs Crate: builds the app, creates config.txt and starts Crate at every login.
-# Run it again after moving this folder or pulling an update.
+# Run it again after pulling an update. Moving the folder is fine: Crate follows it.
 set -euo pipefail
 cd "$(dirname "$0")"
 
