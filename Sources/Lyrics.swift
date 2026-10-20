@@ -4,7 +4,8 @@ import SwiftUI
 // Lyrics window for the track playing in Spotify, synced karaoke-style.
 // Lyrics come from LRCLIB (free, open database) and are cached in ~/Library/Caches/Crate/lyrics.
 // Floats above other windows without stealing focus; click a line to jump there in the song.
-// The button left of × shrinks it to a small strip with just the current and next lines (remembered between openings).
+// The button left of × shrinks it to a small strip with just the current line (karaoke, word by word) and the next one
+// (remembered between openings).
 
 let fullSize = NSSize(width: 400, height: 560)
 let compactSize = NSSize(width: 400, height: 116)
@@ -317,7 +318,7 @@ struct LyricsView: View {
             message(L("Advertisement", "Publicité"))
         } else if let lines = player.lyrics?.synced {
             if compact {
-                CompactLyrics(lines: lines, current: player.current).id(player.track?.id)
+                CompactLyrics(lines: lines, current: player.current) { player.position }.id(player.track?.id)
             } else {
                 SyncedLyrics(lines: lines, current: player.current) { player.seek(to: $0) }.id(player.track?.id)
             }
@@ -431,6 +432,8 @@ struct SyncedLyrics: View {
 struct CompactLyrics: View {
     let lines: [Line]
     let current: Int?
+    /// Position in the song (s), read on every frame for the words of the current line
+    let position: () -> Double
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -446,9 +449,8 @@ struct CompactLyrics: View {
     /// Long lines shrink until they fit whole, instead of being cut with "…"
     var pair: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(text(current ?? -1))
+            TimelineView(.animation(minimumInterval: 1.0 / 30)) { _ in karaoke(current ?? -1) }
                 .font(.system(size: 20, weight: .bold))
-                .foregroundColor(.white)
                 .lineLimit(3)
                 .minimumScaleFactor(0.5)
                 .frame(maxHeight: 58, alignment: .bottomLeading)
@@ -460,6 +462,26 @@ struct CompactLyrics: View {
                 .minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The current line, karaoke-style: each word lights up while it's sung.
+    /// LRC only gives when lines start, so the line is shared between its words by length.
+    func karaoke(_ i: Int) -> Text {
+        guard i >= 0, i < lines.count, !lines[i].text.isEmpty else { return Text(text(i)).foregroundColor(.white) }
+        let line = lines[i]
+        let next = i + 1 < lines.count ? lines[i + 1].t : line.t + 4
+        let length = Double(line.text.count + 1)
+        // Sung for as long as the next line lets it, without stretching over a long silence
+        let sung = min(next - line.t, 0.11 * length + 0.6) * 0.92
+        let now = position() + 0.1
+        var start = line.t
+        return line.text.split(separator: " ").enumerated().reduce(Text("")) { text, item in
+            let duration = sung * Double(item.element.count + 1) / length
+            let sungPart = min(1, max(0, (now - start) / duration))
+            start += duration
+            let word = Text((item.offset == 0 ? "" : " ") + item.element).foregroundColor(.white.opacity(0.38 + 0.62 * sungPart))
+            return Text("\(text)\(word)")
+        }
     }
 
     /// Before the first line: ♪ ; after the last one: nothing

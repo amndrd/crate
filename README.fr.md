@@ -27,7 +27,7 @@
 | | |
 |---|---|
 | **⌘ ⌥ à · Choisir une playlist** | Une grille de pochettes apparaît. Au survol, le vinyle sort de sa pochette et tourne, et le fond prend la couleur de la pochette. Clique dessus (ou tape son numéro) : elle se lance en aléatoire. Spotify reste caché, même s'il était fermé. |
-| **⌘ ⌥ ) · Paroles** | Une fenêtre flottante affiche les paroles de la musique en cours, synchronisées ligne par ligne façon karaoké. Clique sur une ligne pour aller à ce moment de la chanson. Le bouton à côté de × la réduit en un petit bandeau avec seulement la ligne en cours et la suivante. |
+| **⌘ ⌥ ) · Paroles** | Une fenêtre flottante affiche les paroles de la musique en cours, synchronisées ligne par ligne façon karaoké. Clique sur une ligne pour aller à ce moment de la chanson. Le bouton à côté de × la réduit en un petit bandeau avec seulement la ligne en cours et la suivante, la ligne en cours s'allumant mot par mot pendant qu'elle est chantée. |
 | **⌘ ⌥ - · Musique suivante** | Passe à la musique suivante, depuis n'importe quelle app. |
 
 <p align="center">
