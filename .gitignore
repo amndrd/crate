@@ -3,3 +3,7 @@ config.txt
 covers/*
 !covers/.gitkeep
 .DS_Store
+.build/
+DerivedData/
+*.xcuserstate
+*.dSYM/
