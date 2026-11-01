@@ -20,3 +20,11 @@ Rap = https://open.spotify.com/playlist/37i9dQZF1DX0XUsuxWHRQd
 picker = cmd+option+0
 lyrics = cmd+option+-
 next = cmd+option+=
+
+[now playing]
+# When you skip a song with the "next" shortcut, a capsule shows the new one in the top-right corner for a few seconds.
+# On a MacBook with a notch, the cover and bars sit on each side of the camera:
+# move the mouse over the notch to open the player. Write "off" to turn one off.
+
+capsule = on
+notch = on

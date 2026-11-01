@@ -55,7 +55,12 @@ enum Spotify {
         """
     }
 
+    private static var lastPermissionHelp = Date.distantPast
+
     static func showPermissionHelp() {
+        // Spotify is also asked in the background (capsule, notch): once a minute is enough
+        guard Date().timeIntervalSince(lastPermissionHelp) > 60 else { return }
+        lastPermissionHelp = Date()
         Toast.show(L("Allow Crate to control Spotify: System Settings › Privacy & Security › Automation",
                      "Autorise Crate à contrôler Spotify : Réglages › Confidentialité et sécurité › Automatisation"),
                    symbol: "lock.fill")
@@ -80,6 +85,9 @@ enum Spotify {
                 }
                 guard ready else { return done(L("Spotify is taking too long to start", "Spotify met trop de temps à démarrer")) }
                 Thread.sleep(forTimeInterval: 0.5)
+            } else if app?.isActive != true {
+                // Told to play a playlist, Spotify brings itself to the front: hidden again, unless it already was in front
+                keepHidden(for: 5)
             }
             for _ in 0..<3 {
                 run(ifRunning("""
@@ -103,6 +111,14 @@ enum Spotify {
 
     static func next() {
         queue.async { run(ifRunning("next track")) }
+    }
+
+    static func previous() {
+        queue.async { run(ifRunning("previous track")) }
+    }
+
+    static func playPause() {
+        queue.async { run(ifRunning("playpause")) }
     }
 
     static func seek(to seconds: Double) {
@@ -140,15 +156,20 @@ enum Spotify {
         let launched = DispatchSemaphore(value: 0)
         NSWorkspace.shared.openApplication(at: url, configuration: config) { _, _ in launched.signal() }
         launched.wait()
+        // Spotify likes to pop its window up when it's done loading
+        keepHidden(for: 10)
+        return true
+    }
+
+    /// Hides Spotify whenever it shows up during the next few seconds
+    private static func keepHidden(for seconds: Double) {
         DispatchQueue.main.async {
-            // Spotify likes to pop its window up when it's done loading
             let start = CACurrentMediaTime()
             Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { timer in
                 if let app, !app.isHidden { app.hide() }
-                if CACurrentMediaTime() - start > 10 { timer.invalidate() }
+                if CACurrentMediaTime() - start > seconds { timer.invalidate() }
             }
         }
-        return true
     }
 
     /// Turns the Mac's sound back on if it's muted or at 0

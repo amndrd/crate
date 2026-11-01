@@ -27,6 +27,9 @@ struct Config: Equatable {
 
     var playlists: [PlaylistEntry] = []
     var shortcuts: [String: HotKey] = [:]
+    /// [now playing] section: the card when a song starts, the cover and bars around the notch
+    var capsule = true
+    var notch = true
     /// Lines that couldn't be understood, to tell the user
     var problems: [String] = []
     /// config.txt exists but macOS won't let Crate read it (folder protected by privacy settings)
@@ -55,6 +58,17 @@ struct Config: Equatable {
                 let action = line[..<eq].trimmingCharacters(in: .whitespaces).lowercased()
                 guard actions.contains(action) else { config.problems.append(line); continue }
                 shortcutText[action] = line[line.index(after: eq)...].trimmingCharacters(in: .whitespaces)
+            } else if section == "now playing" {
+                guard let eq = line.firstIndex(of: "=") else { config.problems.append(line); continue }
+                let key = line[..<eq].trimmingCharacters(in: .whitespaces).lowercased()
+                let value = line[line.index(after: eq)...].trimmingCharacters(in: .whitespaces).lowercased()
+                let on = ["on", "yes", "true", "oui"].contains(value)
+                guard on || ["off", "no", "false", "non", "none"].contains(value) else { config.problems.append(line); continue }
+                switch key {
+                case "capsule": config.capsule = on
+                case "notch": config.notch = on
+                default: config.problems.append(line)
+                }
             } else if let entry = parsePlaylist(line) {
                 config.playlists.append(entry)
             } else {

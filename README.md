@@ -29,6 +29,7 @@
 | **⌘ ⌥ 0 · Pick a playlist** | A grid of record sleeves pops up. Hover one and the vinyl slides out and spins, the background takes the color of the cover. Click it (or press its number) and it starts playing on shuffle. Spotify stays hidden, even if it was closed. |
 | **⌘ ⌥ - · Lyrics** | A floating window shows the lyrics of the current song, synced line by line like karaoke. Click a line to jump to that moment in the song. The button next to × shrinks it to a small strip with just the current and next lines, the current one lighting up word by word as it's sung. |
 | **⌘ ⌥ = · Next track** | Skips to the next song, from any app. |
+| **Now playing** | When you skip a song with the shortcut, a capsule with the new song's record, title and artist shows up in the top-right corner for a few seconds. On a MacBook with a notch, the cover and dancing bars sit on each side of the camera; move the mouse over the notch and it opens into a player with the progress bar (drag it to move in the song), previous, play/pause and next. Both can be turned off in the `[now playing]` section of `config.txt`. |
 
 <p align="center">
   <img src="docs/screenshots/picker.gif" alt="The picker: records slide out of their sleeves and spin" width="100%">
