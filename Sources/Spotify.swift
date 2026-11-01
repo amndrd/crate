@@ -55,7 +55,12 @@ enum Spotify {
         """
     }
 
+    private static var lastPermissionHelp = Date.distantPast
+
     static func showPermissionHelp() {
+        // Spotify is also asked in the background (capsule, notch): once a minute is enough
+        guard Date().timeIntervalSince(lastPermissionHelp) > 60 else { return }
+        lastPermissionHelp = Date()
         Toast.show(L("Allow Crate to control Spotify: System Settings › Privacy & Security › Automation",
                      "Autorise Crate à contrôler Spotify : Réglages › Confidentialité et sécurité › Automatisation"),
                    symbol: "lock.fill")
@@ -103,6 +108,14 @@ enum Spotify {
 
     static func next() {
         queue.async { run(ifRunning("next track")) }
+    }
+
+    static func previous() {
+        queue.async { run(ifRunning("previous track")) }
+    }
+
+    static func playPause() {
+        queue.async { run(ifRunning("playpause")) }
     }
 
     static func seek(to seconds: Double) {
