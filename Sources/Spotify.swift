@@ -71,7 +71,8 @@ enum Spotify {
     /// Plays a playlist on shuffle, launching Spotify hidden if needed. Calls `done` with an error message, or nil.
     static func play(_ uri: String, done: @escaping (String?) -> Void) {
         queue.async {
-            if !isRunning {
+            let wasRunning = isRunning
+            if !wasRunning {
                 guard launchHidden() else {
                     return done(L("Spotify isn't installed: get it at spotify.com/download",
                                   "Spotify n'est pas installé : spotify.com/download"))
@@ -85,7 +86,18 @@ enum Spotify {
                 }
                 guard ready else { return done(L("Spotify is taking too long to start", "Spotify met trop de temps à démarrer")) }
                 Thread.sleep(forTimeInterval: 0.5)
-            } else if app?.isActive != true {
+            }
+            // Connected to the Web API (Premium): the playlist starts without Spotify showing its window
+            if WebAPI.play(uri) {
+                // Spotify may reset shuffle when the playlist changes. Reading and setting this doesn't bring Spotify up
+                run(ifRunning("""
+                if not shuffling then set shuffling to true
+                if sound volume is 0 then set sound volume to 50
+                """))
+                unmuteMac()
+                return done(nil)
+            }
+            if wasRunning && app?.isActive != true {
                 // Told to play a playlist, Spotify brings itself to the front: hidden again, unless it already was in front
                 keepHidden(for: 5)
             }
@@ -164,10 +176,21 @@ enum Spotify {
     /// Hides Spotify whenever it shows up during the next few seconds
     private static func keepHidden(for seconds: Double) {
         DispatchQueue.main.async {
+            // Hidden the moment macOS says it came up, so it barely shows; the timer catches anything else
+            let center = NSWorkspace.shared.notificationCenter
+            let observers = [NSWorkspace.didActivateApplicationNotification, NSWorkspace.didUnhideApplicationNotification].map {
+                center.addObserver(forName: $0, object: nil, queue: .main) { note in
+                    let shown = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+                    if shown?.bundleIdentifier == bundleID { shown?.hide() }
+                }
+            }
             let start = CACurrentMediaTime()
             Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { timer in
                 if let app, !app.isHidden { app.hide() }
-                if CACurrentMediaTime() - start > seconds { timer.invalidate() }
+                if CACurrentMediaTime() - start > seconds {
+                    timer.invalidate()
+                    observers.forEach(center.removeObserver)
+                }
             }
         }
     }
