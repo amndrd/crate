@@ -252,6 +252,8 @@ final class PickerController {
     private var discs: [Disc] = []
     private var columns = 5
     private var monitors: [Any] = []
+    /// App that was in front when the picker opened: it gets the focus back
+    private var previousApp: NSRunningApplication?
     private var timer: Timer?
     /// Called with the chosen playlist
     var onPick: (PlaylistEntry) -> Void = { _ in }
@@ -294,6 +296,8 @@ final class PickerController {
         let panel = Panel(content: host)
         let f = screenUnderMouse()
         panel.setFrameOrigin(NSPoint(x: f.midX - host.frame.width / 2, y: f.midY - host.frame.height / 2 + f.height * 0.08))
+        let front = NSWorkspace.shared.frontmostApplication
+        previousApp = front == .current ? previousApp : front
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKey()
         panel.fadeIn()
@@ -306,19 +310,30 @@ final class PickerController {
                 self?.handle(event) == true ? nil : event
             } as Any,
             // Clicking outside cancels
-            NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in self?.close() } as Any,
+            NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in self?.close(clickedAway: true) } as Any,
         ]
     }
 
-    func close() {
+    /// `clickedAway`: closed by a click in another app, which takes the focus itself
+    func close(clickedAway: Bool = false) {
         guard let panel else { return }
         monitors.forEach(NSEvent.removeMonitor)
         monitors = []
         timer?.invalidate()
         panel.orderOut(nil)
         self.panel = nil
-        // Give the focus back to the app that was in front
-        NSApp.hide(nil)
+        // Give the focus back to the app that was in front. Left to NSApp.hide alone, macOS sometimes picks
+        // Spotify instead (after a click on a sleeve), which brings its window up
+        if !clickedAway, let previousApp, !previousApp.isTerminated {
+            NSApp.yieldActivation(to: previousApp)
+            previousApp.activate()
+            // Hiding Crate right away would let macOS choose the next app again: only if the handover didn't happen
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                if NSApp.isActive && self?.isOpen != true { NSApp.hide(nil) }
+            }
+        } else {
+            NSApp.hide(nil)
+        }
     }
 
     private func pick(_ entry: PlaylistEntry) {

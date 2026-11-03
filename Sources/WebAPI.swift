@@ -55,7 +55,9 @@ enum WebAPI {
             deviceID = device
             // Picked again while it plays: the API would restart it on the same song, so skip to another one instead
             if isPlaying(uri) {
-                return (200..<300).contains(api("POST", "/me/player/next?device_id=\(device)").status)
+                let status = api("POST", "/me/player/next?device_id=\(device)").status
+                if !(200..<300).contains(status) { log("Web API next: \(status)") }
+                return (200..<300).contains(status)
             }
             // Shuffle first, so the playlist doesn't start on its first song. Spotify only takes it from the active device
             if api("PUT", "/me/player/shuffle?state=true&device_id=\(device)").status == 404 {
