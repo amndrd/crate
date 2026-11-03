@@ -88,6 +88,7 @@ enum Spotify {
                 Thread.sleep(forTimeInterval: 0.5)
             }
             // Connected to the Web API (Premium): the playlist starts without Spotify showing its window
+            if WebAPI.isConnected && wasRunning && app?.isActive != true { sendBackIfActivated(for: 3) }
             if WebAPI.play(uri) {
                 // Spotify may reset shuffle when the playlist changes. Reading and setting this doesn't bring Spotify up
                 run(ifRunning("""
@@ -97,6 +98,7 @@ enum Spotify {
                 unmuteMac()
                 return done(nil)
             }
+            if WebAPI.isConnected { log("Playing \(uri) through the Spotify app instead of the Web API") }
             if wasRunning && app?.isActive != true {
                 // Told to play a playlist, Spotify brings itself to the front: hidden again, unless it already was in front
                 keepHidden(for: 5)
@@ -192,6 +194,20 @@ enum Spotify {
                     observers.forEach(center.removeObserver)
                 }
             }
+        }
+    }
+
+    /// Hides Spotify if something brings it to the front during the next few seconds, and leaves it alone otherwise
+    private static func sendBackIfActivated(for seconds: Double) {
+        DispatchQueue.main.async {
+            let center = NSWorkspace.shared.notificationCenter
+            let observer = center.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { note in
+                guard let shown = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                      shown.bundleIdentifier == bundleID else { return }
+                log("Spotify came to the front while a playlist started: hidden again")
+                shown.hide()
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { center.removeObserver(observer) }
         }
     }
 
