@@ -45,12 +45,14 @@ En détail :
 
 ## Gratuit, et sans Premium
 
-Crate n'utilise pas l'API Web de Spotify, qui exige Premium pour contrôler la lecture et un compte développeur. Il **pilote l'app Spotify déjà installée sur ton Mac**, comme le font l'app Raccourcis ou AppleScript : ça marche donc avec un **compte Spotify gratuit**. Pas de connexion, pas de clé d'API, rien à configurer côté Spotify.
+Par défaut, Crate n'utilise pas l'API Web de Spotify, qui exige Premium pour contrôler la lecture et un compte développeur. Il **pilote l'app Spotify déjà installée sur ton Mac**, comme le font l'app Raccourcis ou AppleScript : ça marche donc avec un **compte Spotify gratuit**. Pas de connexion, pas de clé d'API, rien à configurer côté Spotify.
 
 - **Les pochettes** viennent des infos publiques de Spotify, celles qui s'affichent quand on colle un lien dans une conversation.
 - **Les paroles** viennent de [LRCLIB](https://lrclib.net), une base de paroles libre et gratuite.
 
 > Les règles de Spotify s'appliquent toujours : avec un compte gratuit, il y a des pubs, et c'est Spotify qui décide du nombre de musiques que tu peux passer.
+
+Avec Premium, tu peux aussi [connecter Crate à l'API Web](#premium-sans-fenetre) : la fenêtre Spotify ne s'affiche plus du tout quand une playlist démarre.
 
 ## Installation
 
@@ -155,13 +157,29 @@ cd ~/Crate && git pull && ./install.sh
 </details>
 
 <details>
+<summary><b id="premium-sans-fenetre">Premium : lancer les playlists sans que la fenêtre Spotify s'affiche</b></summary>
+
+Quand une app demande à Spotify de jouer une playlist, Spotify passe sa fenêtre au premier plan. Crate la cache aussitôt, mais tu peux la voir apparaître une fraction de seconde. Avec un compte Premium, Crate peut lancer les playlists par l'API Web de Spotify à la place, et la fenêtre ne bouge plus du tout :
+
+1. Va sur le [tableau de bord développeur de Spotify](https://developer.spotify.com/dashboard), connecte-toi et clique sur **Create app**. Le nom et la description n'ont pas d'importance.
+2. Dans **Redirect URIs**, ajoute `http://127.0.0.1:8888/callback`. Dans **Which API/SDKs are you planning to use?**, coche **Web API**. Enregistre.
+3. Copie le **Client ID** de l'app et lance :
+
+```bash
+~/Crate/Crate.app/Contents/MacOS/Crate connect <Client ID>
+```
+
+Ton navigateur ouvre Spotify : clique sur **Accepter**, c'est fini. Crate garde la connexion dans `~/Library/Application Support/Crate`. Si l'API ne répond pas (pas d'internet, accès retiré), Crate repasse par l'app Spotify. Pour ne plus utiliser l'API : `Crate disconnect`.
+</details>
+
+<details>
 <summary><b>Désinstaller</b></summary>
 
 ```bash
 ~/Crate/uninstall.sh && rm -rf ~/Crate
 ```
 
-Ça arrête Crate, le retire de l'ouverture de session et efface son cache et ses autorisations.
+Ça arrête Crate, le retire de l'ouverture de session et efface son cache, ses autorisations et sa connexion à Spotify.
 </details>
 
 <details>
@@ -177,7 +195,7 @@ cd ~/Crate && git pull && ./install.sh
 <details>
 <summary><b>Vie privée</b></summary>
 
-Crate tourne entièrement sur ton Mac : pas de compte, pas de statistiques, pas de serveur. Ses seules requêtes réseau vont vers `open.spotify.com` (pochettes) et `lrclib.net` (paroles). Pochettes et paroles sont gardées en cache dans `~/Library/Caches/Crate`.
+Crate tourne entièrement sur ton Mac : pas de compte, pas de statistiques, pas de serveur. Ses seules requêtes réseau vont vers `open.spotify.com` (pochettes) et `lrclib.net` (paroles), plus `api.spotify.com` et `accounts.spotify.com` si tu l'as connecté à l'API Web. Pochettes et paroles sont gardées en cache dans `~/Library/Caches/Crate`.
 </details>
 
 <details>
@@ -191,6 +209,7 @@ Une seule petite app macOS en Swift et SwiftUI, sans dépendance. Elle tourne en
 | `Sources/Picker.swift` | Le bac à vinyles : pochettes, disques qui tournent, navigation au clavier |
 | `Sources/Lyrics.swift` | Fenêtre des paroles, recherche LRCLIB et lecture du format LRC |
 | `Sources/Spotify.swift` | Dialogue avec l'app Spotify via AppleScript |
+| `Sources/WebAPI.swift` | Connexion facultative à l'API Web (Premium) : `Crate connect`, lancement des playlists |
 | `Sources/Library.swift` | Pochettes et noms des playlists, avec leur cache |
 | `Sources/Config.swift` | Lecture de `config.txt`, raccourcis clavier |
 | `install.sh` · `build.sh` · `uninstall.sh` | Compiler, installer, désinstaller |

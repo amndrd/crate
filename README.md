@@ -45,12 +45,14 @@ Some details:
 
 ## Free, and no Premium needed
 
-Crate doesn't use Spotify's Web API (which requires Premium to control playback, plus a developer account). It **drives the Spotify app already on your Mac**, the same way Apple's Shortcuts or AppleScript can, so it works with **free Spotify accounts**. There's no login, no API key and nothing to configure on Spotify's side.
+By default, Crate doesn't use Spotify's Web API (which requires Premium to control playback, plus a developer account). It **drives the Spotify app already on your Mac**, the same way Apple's Shortcuts or AppleScript can, so it works with **free Spotify accounts**. There's no login, no API key and nothing to configure on Spotify's side.
 
 - **Covers** come from Spotify's public embed info (the same data shown when you paste a link in a chat).
 - **Lyrics** come from [LRCLIB](https://lrclib.net), a free and open lyrics database.
 
 > Spotify's own rules still apply: on a free account you'll hear ads, and Spotify decides how many skips you get.
+
+On Premium, you can also [connect Crate to the Web API](#premium-no-spotify-window) so the Spotify window never flashes up when a playlist starts.
 
 ## Installation
 
@@ -147,6 +149,22 @@ In the Shortcuts app, use the **Run Shell Script** action with one of these line
 </details>
 
 <details>
+<summary><b id="premium-no-spotify-window">Premium: start playlists without the Spotify window showing up</b></summary>
+
+When an app tells Spotify to play a playlist, Spotify brings its window to the front. Crate hides it right away, but you may see it flash. With a Premium account, Crate can start playlists through Spotify's Web API instead, and the window doesn't move at all:
+
+1. Go to the [Spotify developer dashboard](https://developer.spotify.com/dashboard), log in and click **Create app**. Any name and description will do.
+2. Under **Redirect URIs**, add `http://127.0.0.1:8888/callback`. Under **Which API/SDKs are you planning to use?**, tick **Web API**. Save.
+3. Copy the app's **Client ID** and run:
+
+```bash
+~/Crate/Crate.app/Contents/MacOS/Crate connect <Client ID>
+```
+
+Your browser opens Spotify: click **Agree**, and you're done. Crate keeps the connection in `~/Library/Application Support/Crate`. If the API ever fails (no internet, connection revoked), Crate goes back to driving the Spotify app. To stop using the API: `Crate disconnect`.
+</details>
+
+<details>
 <summary><b>Update</b></summary>
 
 ```bash
@@ -161,7 +179,7 @@ cd ~/Crate && git pull && ./install.sh
 ~/Crate/uninstall.sh && rm -rf ~/Crate
 ```
 
-This stops Crate, removes it from login items and deletes its cache and permissions.
+This stops Crate, removes it from login items and deletes its cache, permissions and Spotify connection.
 </details>
 
 <details>
@@ -177,7 +195,7 @@ This stops Crate, removes it from login items and deletes its cache and permissi
 <details>
 <summary><b>Privacy</b></summary>
 
-Crate runs entirely on your Mac. It has no account, no analytics and no server. The only network requests it makes are to `open.spotify.com` (playlist covers) and `lrclib.net` (lyrics). Covers and lyrics are cached in `~/Library/Caches/Crate`.
+Crate runs entirely on your Mac. It has no account, no analytics and no server. The only network requests it makes are to `open.spotify.com` (playlist covers) and `lrclib.net` (lyrics), plus `api.spotify.com` and `accounts.spotify.com` if you connected it to the Web API. Covers and lyrics are cached in `~/Library/Caches/Crate`.
 </details>
 
 <details>
@@ -191,6 +209,7 @@ A single small macOS app written in Swift and SwiftUI, with no dependencies. It 
 | `Sources/Picker.swift` | The record crate: sleeves, spinning vinyls, keyboard navigation |
 | `Sources/Lyrics.swift` | Lyrics window, LRCLIB lookup and LRC parsing |
 | `Sources/Spotify.swift` | Talks to the Spotify app through AppleScript |
+| `Sources/WebAPI.swift` | Optional Web API connection (Premium): `Crate connect`, starting playlists |
 | `Sources/Library.swift` | Covers and playlist names, with their cache |
 | `Sources/Config.swift` | Reads `config.txt`, keyboard shortcuts |
 | `install.sh` · `build.sh` · `uninstall.sh` | Build, install, remove |

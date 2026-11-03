@@ -6,11 +6,13 @@
 //   Crate picker|lyrics|next  asks the running Crate to open the picker / toggle lyrics / skip
 //   Crate play <link>         plays a playlist, album or artist on shuffle
 //   Crate config              opens config.txt
+//   Crate connect <client id> optional, Premium: starts playlists through Spotify's Web API (no Spotify window)
+//   Crate disconnect          back to the Spotify app only
 
 import AppKit
 import Carbon
 
-let usage = "Usage: Crate [picker | lyrics | next | play <spotify link> | config]"
+let usage = "Usage: Crate [picker | lyrics | next | play <spotify link> | config | connect <client id> | disconnect]"
 let commands = ["picker", "lyrics", "next", "config"]
 
 /// Only one Crate runs at a time: it holds this lock
@@ -29,6 +31,12 @@ func send(_ command: String, link: String? = nil) {
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 if let command = arguments.first {
+    // Done right here: Crate doesn't need to be running
+    if command == "connect" {
+        guard arguments.count == 2 else { print(WebAPI.connectHelp); exit(1) }
+        WebAPI.connect(clientID: arguments[1])
+    }
+    if command == "disconnect" { WebAPI.disconnect(); exit(0) }
     let link = command == "play" && arguments.count == 2 ? arguments[1] : nil
     guard commands.contains(command) && arguments.count == 1 || link.flatMap(Config.parsePlaylist) != nil else { print(usage); exit(1) }
     if command == "config" { openConfig(); exit(0) }
