@@ -27,7 +27,7 @@
 | | |
 |---|---|
 | **⌘ ⌥ à · Choisir une playlist** | Une grille de pochettes apparaît. Au survol, le vinyle sort de sa pochette et tourne, et le fond prend la couleur de la pochette. Clique dessus (ou tape son numéro) : elle se lance en aléatoire. Spotify reste caché, même s'il était fermé. |
-| **⌘ ⌥ ) · Paroles** | Une fenêtre flottante affiche les paroles de la musique en cours, synchronisées ligne par ligne façon karaoké. Clique sur une ligne pour aller à ce moment de la chanson. Le bouton à côté de × la réduit en un petit bandeau avec seulement la ligne en cours et la suivante, la ligne en cours s'allumant mot par mot pendant qu'elle est chantée. |
+| **⌘ ⌥ ) · Paroles** | Une fenêtre flottante affiche les paroles de la musique en cours, synchronisées ligne par ligne façon karaoké. Clique sur une ligne pour aller à ce moment de la chanson. Le bouton à côté de × la réduit en un petit bandeau avec seulement la ligne en cours et la suivante, la ligne en cours s'allumant mot par mot pendant qu'elle est chantée. Sur macOS 26, Crate peut [écouter le morceau](#paroles-suivent-le-chant) pour allumer chaque mot au moment exact où il est chanté. |
 | **⌘ ⌥ - · Musique suivante** | Passe à la musique suivante, depuis n'importe quelle app. |
 | **En lecture** | Quand tu passes une musique avec le raccourci, une capsule avec le vinyle, le titre et l'artiste de la nouvelle apparaît quelques secondes en haut à droite. Sur un MacBook avec encoche, la pochette et des barres qui dansent se placent de part et d'autre de la caméra ; passe la souris sur l'encoche et elle s'ouvre en lecteur, avec la barre de progression (fais-la glisser pour avancer dans la chanson), précédent, lecture/pause et suivant. Les deux se désactivent dans la section `[now playing]` de `config.txt`. |
 
@@ -40,6 +40,7 @@ En détail :
 - La playlist en cours est marquée d'un point vert et son vinyle continue de tourner.
 - Si le son est coupé ou que le volume de Spotify est à 0, Crate le remonte au lancement d'une playlist.
 - Dans le menu : flèches, Entrée, Échap, et les touches 1…0. ⌘ , ouvre ta liste de playlists.
+- Dans la fenêtre des paroles (après un clic dedans), ← et → avancent ou retardent les paroles de ce morceau de 0,1 s. Crate s'en souvient.
 - Les raccourcis et les playlists sont dans un simple fichier texte, pris en compte dès que tu l'enregistres.
 - L'interface est en français ou en anglais, selon la langue de ton Mac.
 
@@ -48,7 +49,7 @@ En détail :
 Par défaut, Crate n'utilise pas l'API Web de Spotify, qui exige Premium pour contrôler la lecture et un compte développeur. Il **pilote l'app Spotify déjà installée sur ton Mac**, comme le font l'app Raccourcis ou AppleScript : ça marche donc avec un **compte Spotify gratuit**. Pas de connexion, pas de clé d'API, rien à configurer côté Spotify.
 
 - **Les pochettes** viennent des infos publiques de Spotify, celles qui s'affichent quand on colle un lien dans une conversation.
-- **Les paroles** viennent de [LRCLIB](https://lrclib.net), une base de paroles libre et gratuite.
+- **Les paroles** viennent de [LRCLIB](https://lrclib.net), une base de paroles libre et gratuite. Quand elle n'a que le texte d'un morceau, [l'écoute](#paroles-suivent-le-chant) peut le synchroniser.
 
 > Les règles de Spotify s'appliquent toujours : avec un compte gratuit, il y a des pubs, et c'est Spotify qui décide du nombre de musiques que tu peux passer.
 
@@ -173,6 +174,25 @@ Ton navigateur ouvre Spotify : clique sur **Accepter**, c'est fini. Crate garde 
 </details>
 
 <details>
+<summary><b id="paroles-suivent-le-chant">Des paroles qui suivent le chant (macOS 26)</b></summary>
+
+LRCLIB ne donne que le début de chaque ligne : Crate devine quand chaque mot est chanté, et c'est souvent un peu décalé. Avec l'écoute, Crate entend le morceau pendant qu'il joue, la reconnaissance vocale de macOS dit quand chaque mot est chanté, et Crate le cale sur les paroles : chaque mot s'allume au moment où il est vraiment chanté. Pour l'activer, ajoute ceci dans `config.txt` :
+
+```ini
+[lyrics]
+listen = on
+```
+
+- **Seulement quand la fenêtre des paroles est ouverte, seulement Spotify.** Le son va directement à la reconnaissance vocale de macOS, sur ton Mac. Rien n'est enregistré, gardé ni envoyé : Crate ne garde que le moment où chaque mot est chanté.
+- **macOS te demande une fois** d'autoriser Crate à enregistrer l'audio de l'ordinateur (Réglages › Confidentialité et sécurité › Enregistrement de l'écran et de l'audio). Pendant que Crate écoute, l'indicateur d'enregistrement s'affiche dans la barre des menus.
+- **Ça s'améliore à l'écoute.** Les mots sont reconnus quelques secondes après avoir été chantés : la première fois qu'un morceau passe, Crate recale surtout les lignes ; dès la fois suivante, chaque mot est à sa place. Après deux écoutes complètes, le morceau est connu et Crate arrête de l'écouter. Une petite onde à côté de l'artiste indique un morceau calé à l'écoute.
+- **Les paroles simples deviennent synchronisées.** Quand LRCLIB n'a que le texte d'un morceau, Crate le synchronise après l'avoir entendu une fois, s'il en a reconnu la plupart des lignes.
+- **Langues** : une trentaine (français, anglais, espagnol, allemand, italien, portugais, japonais, chinois…). La première fois, macOS peut télécharger la reconnaissance d'une nouvelle langue. Les autres (le russe par exemple) gardent le minutage de LRCLIB.
+- **Quand il ne peut pas trancher**, avec beaucoup d'Auto-Tune ou une voix noyée dans la musique par exemple, Crate garde le minutage de LRCLIB : l'écoute ne rend jamais les paroles moins bonnes.
+- Il faut macOS 26. Sur les versions plus anciennes, `listen = on` ne fait rien.
+</details>
+
+<details>
 <summary><b>Désinstaller</b></summary>
 
 ```bash
@@ -189,13 +209,15 @@ Ton navigateur ouvre Spotify : clique sur **Accepter**, c'est fini. Crate garde 
 - **« Raccourci … déjà pris par une autre app ».** Choisis-en un autre dans `config.txt`.
 - **La playlist ne se lance pas.** Vérifie que Crate a le droit de contrôler Spotify dans Réglages Système › Confidentialité et sécurité › Automatisation.
 - **« Pas de paroles trouvées ».** LRCLIB n'a pas toutes les chansons, surtout les plus récentes ou les moins connues. Crate réessaie quelques jours plus tard.
+- **Paroles un peu en avance ou en retard.** Appuie sur ← ou → dans la fenêtre des paroles pour ce morceau, ou règle `delay` dans la section `[lyrics]` de `config.txt` pour tous (+ plus tard, - plus tôt). Crate tient déjà compte du retard des écouteurs Bluetooth.
+- **« Crate n'entend pas Spotify ».** Avec `listen = on`, autorise Crate dans Réglages › Confidentialité et sécurité › Enregistrement de l'écran et de l'audio, sous « Enregistrement audio du système uniquement ».
 - **`xcrun: error: invalid active developer path`.** Les Command Line Tools manquent : voir l'étape 1.
 </details>
 
 <details>
 <summary><b>Vie privée</b></summary>
 
-Crate tourne entièrement sur ton Mac : pas de compte, pas de statistiques, pas de serveur. Ses seules requêtes réseau vont vers `open.spotify.com` (pochettes) et `lrclib.net` (paroles), plus `api.spotify.com` et `accounts.spotify.com` si tu l'as connecté à l'API Web. Pochettes et paroles sont gardées en cache dans `~/Library/Caches/Crate`.
+Crate tourne entièrement sur ton Mac : pas de compte, pas de statistiques, pas de serveur. Ses seules requêtes réseau vont vers `open.spotify.com` (pochettes) et `lrclib.net` (paroles), plus `api.spotify.com` et `accounts.spotify.com` si tu l'as connecté à l'API Web. Pochettes, paroles et minutages des mots sont gardés en cache dans `~/Library/Caches/Crate`. Avec `listen = on`, le son de Spotify est analysé sur ton Mac par la reconnaissance vocale de macOS pendant que la fenêtre des paroles est ouverte, sans jamais être enregistré ni envoyé.
 </details>
 
 <details>
@@ -208,6 +230,9 @@ Une seule petite app macOS en Swift et SwiftUI, sans dépendance. Elle tourne en
 | `Sources/App.swift` | Raccourcis globaux (Carbon), rechargement de la config, commandes |
 | `Sources/Picker.swift` | Le bac à vinyles : pochettes, disques qui tournent, navigation au clavier |
 | `Sources/Lyrics.swift` | Fenêtre des paroles, recherche LRCLIB et lecture du format LRC |
+| `Sources/AudioListener.swift` | `listen = on` : écoute Spotify (capture Core Audio) et reconnaissance vocale de macOS |
+| `Sources/LyricsSync.swift` | Cale les mots reconnus sur les paroles ; synchronise les paroles simples |
+| `Sources/LyricsLearner.swift` | Apprend le minutage des mots pendant l'écoute, morceau par morceau, et le garde en cache |
 | `Sources/Spotify.swift` | Dialogue avec l'app Spotify via AppleScript |
 | `Sources/WebAPI.swift` | Connexion facultative à l'API Web (Premium) : `Crate connect`, lancement des playlists |
 | `Sources/Library.swift` | Pochettes et noms des playlists, avec leur cache |

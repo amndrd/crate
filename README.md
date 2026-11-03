@@ -27,7 +27,7 @@
 | | |
 |---|---|
 | **⌘ ⌥ 0 · Pick a playlist** | A grid of record sleeves pops up. Hover one and the vinyl slides out and spins, the background takes the color of the cover. Click it (or press its number) and it starts playing on shuffle. Spotify stays hidden, even if it was closed. |
-| **⌘ ⌥ - · Lyrics** | A floating window shows the lyrics of the current song, synced line by line like karaoke. Click a line to jump to that moment in the song. The button next to × shrinks it to a small strip with just the current and next lines, the current one lighting up word by word as it's sung. |
+| **⌘ ⌥ - · Lyrics** | A floating window shows the lyrics of the current song, synced line by line like karaoke. Click a line to jump to that moment in the song. The button next to × shrinks it to a small strip with just the current and next lines, the current one lighting up word by word as it's sung. On macOS 26, Crate can [listen to the song](#lyrics-follow-singing) to light each word up exactly when it's sung. |
 | **⌘ ⌥ = · Next track** | Skips to the next song, from any app. |
 | **Now playing** | When you skip a song with the shortcut, a capsule with the new song's record, title and artist shows up in the top-right corner for a few seconds. On a MacBook with a notch, the cover and dancing bars sit on each side of the camera; move the mouse over the notch and it opens into a player with the progress bar (drag it to move in the song), previous, play/pause and next. Both can be turned off in the `[now playing]` section of `config.txt`. |
 
@@ -40,6 +40,7 @@ Some details:
 - The playlist that's playing is marked with a green dot and its record keeps spinning.
 - If the sound is muted, or Spotify's volume is at 0, Crate turns it back up when you start a playlist.
 - Arrow keys, Return, Escape and the number keys 1…0 work in the picker. ⌘ , opens your playlist list.
+- In the lyrics window (after a click in it), ← and → move this song's lyrics 0.1 s earlier or later. Crate remembers it.
 - Your shortcuts and playlists live in a plain text file, and changes apply as soon as you save it.
 - The interface is in English or French, following your Mac's language.
 
@@ -48,7 +49,7 @@ Some details:
 By default, Crate doesn't use Spotify's Web API (which requires Premium to control playback, plus a developer account). It **drives the Spotify app already on your Mac**, the same way Apple's Shortcuts or AppleScript can, so it works with **free Spotify accounts**. There's no login, no API key and nothing to configure on Spotify's side.
 
 - **Covers** come from Spotify's public embed info (the same data shown when you paste a link in a chat).
-- **Lyrics** come from [LRCLIB](https://lrclib.net), a free and open lyrics database.
+- **Lyrics** come from [LRCLIB](https://lrclib.net), a free and open lyrics database. When it only has a song's plain text, [listening](#lyrics-follow-singing) can time it.
 
 > Spotify's own rules still apply: on a free account you'll hear ads, and Spotify decides how many skips you get.
 
@@ -165,6 +166,25 @@ Your browser opens Spotify: click **Agree**, and you're done. Crate keeps the co
 </details>
 
 <details>
+<summary><b id="lyrics-follow-singing">Lyrics that follow the singing (macOS 26)</b></summary>
+
+LRCLIB only says when each line starts, so Crate guesses when each word is sung, and it's often a bit off. With listening on, Crate hears the song as it plays, macOS speech recognition tells when each word is sung, and Crate lines that up with the lyrics: each word lights up when it's actually sung. To turn it on, add this to `config.txt`:
+
+```ini
+[lyrics]
+listen = on
+```
+
+- **Only while the lyrics window is open, only Spotify.** The audio goes straight to macOS speech recognition, on your Mac. Nothing is recorded, saved or sent anywhere: Crate only keeps when each word is sung.
+- **macOS asks you once** to allow Crate to record the computer's audio (System Settings › Privacy & Security › Screen & System Audio Recording). While Crate listens, the recording indicator shows in the menu bar.
+- **It gets better as you listen.** The words are recognized a few seconds after they're sung, so the first time a song plays, Crate mostly corrects the lines' timing; from the next time, every word is in place. After two full listens a song is known and Crate stops listening to it. A small waveform next to the artist means the song is timed by listening.
+- **Plain lyrics become synced.** When LRCLIB only has the text of a song, Crate times it after hearing it once, if it recognized most of the lines.
+- **Languages**: about 30 (English, French, Spanish, German, Italian, Portuguese, Japanese, Chinese…). The first time, macOS may download its recognition for a new language. Others (Russian, for instance) keep LRCLIB's timing.
+- **When it can't tell**, with heavy Auto-Tune or vocals buried in the music for instance, Crate keeps LRCLIB's timing: listening never makes lyrics worse.
+- It needs macOS 26. On older versions, `listen = on` does nothing.
+</details>
+
+<details>
 <summary><b>Update</b></summary>
 
 ```bash
@@ -189,13 +209,15 @@ This stops Crate, removes it from login items and deletes its cache, permissions
 - **“Shortcut … is used by another app”.** Pick another one in `config.txt`.
 - **The playlist doesn't start.** Make sure Crate is allowed to control Spotify in System Settings › Privacy & Security › Automation.
 - **“No lyrics found”.** LRCLIB doesn't have every song, especially recent or less-known ones. Crate looks again a few days later.
+- **Lyrics a little early or late.** Press ← or → in the lyrics window for this song, or set `delay` in the `[lyrics]` section of `config.txt` for all of them (+ later, - earlier). Crate already allows for the delay of Bluetooth headphones.
+- **“Crate can't hear Spotify”.** With `listen = on`, allow Crate in System Settings › Privacy & Security › Screen & System Audio Recording, under System Audio Recording Only.
 - **`xcrun: error: invalid active developer path`.** The Command Line Tools are missing: see step 1.
 </details>
 
 <details>
 <summary><b>Privacy</b></summary>
 
-Crate runs entirely on your Mac. It has no account, no analytics and no server. The only network requests it makes are to `open.spotify.com` (playlist covers) and `lrclib.net` (lyrics), plus `api.spotify.com` and `accounts.spotify.com` if you connected it to the Web API. Covers and lyrics are cached in `~/Library/Caches/Crate`.
+Crate runs entirely on your Mac. It has no account, no analytics and no server. The only network requests it makes are to `open.spotify.com` (playlist covers) and `lrclib.net` (lyrics), plus `api.spotify.com` and `accounts.spotify.com` if you connected it to the Web API. Covers, lyrics and word timings are cached in `~/Library/Caches/Crate`. With `listen = on`, Spotify's audio is analyzed on your Mac by macOS speech recognition while the lyrics window is open, and is never recorded or sent.
 </details>
 
 <details>
@@ -208,6 +230,9 @@ A single small macOS app written in Swift and SwiftUI, with no dependencies. It 
 | `Sources/App.swift` | Global shortcuts (Carbon hot keys), config reloading, commands |
 | `Sources/Picker.swift` | The record crate: sleeves, spinning vinyls, keyboard navigation |
 | `Sources/Lyrics.swift` | Lyrics window, LRCLIB lookup and LRC parsing |
+| `Sources/AudioListener.swift` | `listen = on`: hears Spotify (Core Audio tap) and macOS speech recognition |
+| `Sources/LyricsSync.swift` | Lines the recognized words up with the lyrics; times plain lyrics |
+| `Sources/LyricsLearner.swift` | Learns word timings while you listen, song by song, and caches them |
 | `Sources/Spotify.swift` | Talks to the Spotify app through AppleScript |
 | `Sources/WebAPI.swift` | Optional Web API connection (Premium): `Crate connect`, starting playlists |
 | `Sources/Library.swift` | Covers and playlist names, with their cache |
