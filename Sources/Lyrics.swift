@@ -5,10 +5,12 @@ import SwiftUI
 // Lyrics come from LRCLIB (free, open database) and are cached in ~/Library/Caches/Crate/lyrics.
 // Floats above other windows without stealing focus; click a line to jump there in the song.
 // The button left of × shrinks it to a small strip with just the current line (karaoke, word by word) and the next one
-// (remembered between openings).
+// (remembered between openings). The strip's buttons show when the mouse is over it, or stay on its right (config).
 
 let fullSize = NSSize(width: 400, height: 560)
-let compactSize = NSSize(width: 400, height: 116)
+let compactSize = NSSize(width: 400, height: 108)
+/// Margin around the window's content: cover, lyrics and buttons line up on it
+private let inset: CGFloat = 20
 
 struct Line: Codable {
     let t: Double
@@ -167,6 +169,8 @@ final class Player: ObservableObject {
     @Published var nudge = 0.0
     /// config.txt "delay": + shows all lyrics later
     var delay = 0.0
+    /// config.txt "buttons = column": the strip's buttons stay on its right, instead of showing on hover
+    @Published var buttonColumn = false
     /// Time the sound takes to come out of the speakers or headphones (Bluetooth: a lot)
     private var outputLatency = 0.0
     /// Window shrunk to the current and next lines
@@ -361,6 +365,10 @@ struct LyricsView: View {
     /// Shrink/expand button: LyricsController.setCompact drives the window and the animation
     let toggleCompact: () -> Void
     let onClose: () -> Void
+    @State private var hovering = false
+    /// Strip: buttons stacked on the right ("buttons = column" in config.txt); otherwise they show on hover only
+    private var column: Bool { player.compact && player.buttonColumn }
+    private var hidden: Bool { player.compact && !player.buttonColumn && !hovering }
 
     var body: some View {
         // Each layout keeps its own fixed size: the animated card crops them instead of laying them out again
@@ -372,7 +380,24 @@ struct LyricsView: View {
             }
         }
         .frame(width: fullSize.width, height: (player.compact ? compactSize : fullSize).height, alignment: .top)
-        .overlay(alignment: .topTrailing) { buttons.padding(.top, 29).padding(.trailing, 16) }
+        // Strip, on hover: a shade under the buttons, so they stay readable over the words
+        .overlay {
+            if player.compact && !player.buttonColumn && hovering {
+                LinearGradient(colors: [.black.opacity(0.55), .clear], startPoint: .trailing, endPoint: UnitPoint(x: 0.45, y: 0.5))
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+        }
+        .overlay(alignment: column ? .trailing : .topTrailing) {
+            Group {
+                if column { buttonColumn } else { buttons }
+            }
+            // Window: centered on the cover. Strip: in the corner, or centered on the right
+            .padding(.top, player.compact ? (column ? 0 : 14) : inset + 23 - 10)
+            .padding(.trailing, player.compact ? 14 : inset)
+            .opacity(hidden ? 0 : 1)
+        }
+        .onHover { over in withAnimation(.easeInOut(duration: 0.2)) { hovering = over } }
         .background(LinearGradient(colors: [.black.opacity(0.2), .black.opacity(0.5)], startPoint: .top, endPoint: .bottom))
         .background(alignment: .top) { coverBackground }
         .background(VisualEffect())
@@ -383,20 +408,22 @@ struct LyricsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
+    /// The lyrics go up under the header, fading out: they can start right below it, and still leave softly
     var fullLayout: some View {
-        VStack(spacing: 0) {
-            header
+        ZStack(alignment: .top) {
             content(compact: false).frame(maxWidth: .infinity, maxHeight: .infinity)
+            header.contentShape(Rectangle())   // no click on the lyrics hidden under it
         }
         .frame(width: fullSize.width, height: fullSize.height)
     }
 
-    /// The current line (left of the buttons) and the next one
+    /// The current line and the next one, centered in the strip whatever their length
     var compactLayout: some View {
         content(compact: true)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .padding(.leading, inset)
+            .padding(.trailing, column ? 14 + 20 + 14 : inset)
+            .padding(.vertical, 12)
             .frame(width: compactSize.width, height: compactSize.height)
     }
 
@@ -430,7 +457,7 @@ struct LyricsView: View {
             .lineLimit(1)
             Spacer(minLength: 84)   // room for the buttons, laid on top
         }
-        .padding(16)
+        .padding(inset)
     }
 
     var buttons: some View {
@@ -444,6 +471,18 @@ struct LyricsView: View {
                         action: toggleCompact)
             .help(player.compact ? L("Expand", "Agrandir") : L("Shrink", "Réduire"))
             roundButton("xmark", action: onClose)
+        }
+    }
+
+    /// Strip, "column": × on top, as in a corner
+    var buttonColumn: some View {
+        VStack(spacing: 8) {
+            roundButton("xmark", action: onClose)
+            roundButton("arrow.up.left.and.arrow.down.right", action: toggleCompact).help(L("Expand", "Agrandir"))
+            roundButton("music.note", on: player.wordByWord) {
+                withAnimation(.easeInOut(duration: 0.2)) { player.wordByWord.toggle() }
+            }
+            .help(player.wordByWord ? L("Word by word: on", "Mot à mot : activé") : L("Word by word: off", "Mot à mot : désactivé"))
         }
     }
 
@@ -470,7 +509,8 @@ struct LyricsView: View {
             message(L("Advertisement", "Publicité"))
         } else if let lines = player.lyrics?.synced {
             if compact {
-                CompactLyrics(lines: lines, current: player.current, player: player).id(player.track?.id)
+                CompactLyrics(lines: lines, current: player.current, player: player,
+                              width: compactSize.width - inset - (column ? 14 + 20 + 14 : inset)).id(player.track?.id)
             } else {
                 SyncedLyrics(lines: lines, current: player.current, player: player) { player.seek(to: $0) }.id(player.track?.id)
             }
@@ -484,7 +524,9 @@ struct LyricsView: View {
                     .lineSpacing(8)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(24)
+                    .padding(.horizontal, inset)
+                    .padding(.top, lyricsTop)
+                    .padding(.bottom, 24)
             }
             .mask(fadeEdges)
         } else if player.lyrics?.instrumental == true {
@@ -531,10 +573,44 @@ extension AnyTransition {
     static let soft = AnyTransition.modifier(active: SoftFade(amount: 1), identity: SoftFade(amount: 0))
 }
 
-/// Fade at the top and bottom of the lyrics
-let fadeEdges = LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.1),
+/// Header of the full window: cover, title, buttons
+private let headerHeight = inset + 46 + inset
+/// Where the lyrics start, just below the header
+private let lyricsTop = headerHeight + 4
+
+/// The lyrics fade out under the header (from the bottom of the cover) and at the bottom of the window
+let fadeEdges = LinearGradient(stops: [.init(color: .clear, location: 0),
+                                       .init(color: .clear, location: (headerHeight - inset) / fullSize.height),
+                                       .init(color: .black, location: lyricsTop / fullSize.height),
                                        .init(color: .black, location: 0.85), .init(color: .clear, location: 1)],
                                startPoint: .top, endPoint: .bottom)
+
+/// While nothing is sung (before the first line, during a break): three dots that light up one after the other
+/// until the singing starts again
+struct Breath: View {
+    let player: Player
+    /// When the silence starts and ends in the song (s)
+    let from: Double
+    let to: Double
+    let active: Bool
+    var dot: CGFloat = 9
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !active)) { _ in
+            let now = player.heardPosition
+            let progress = active ? min(1, max(0, (now - from) / max(0.5, to - from))) : 0
+            HStack(spacing: dot * 0.7) {
+                ForEach(0..<3, id: \.self) { k in
+                    Circle()
+                        .fill(.white.opacity(0.3 + 0.7 * min(1, max(0, progress * 3 - Double(k)))))
+                        .frame(width: dot, height: dot)
+                }
+            }
+            // Breathes gently while waiting
+            .scaleEffect(active ? 1 + 0.08 * sin(now * 2.6) : 1, anchor: .leading)
+        }
+    }
+}
 
 struct SyncedLyrics: View {
     let lines: [Line]
@@ -543,19 +619,31 @@ struct SyncedLyrics: View {
     let onSeek: (Double) -> Void
     @State private var hovered: Int?
 
+    /// The song starts with music only: dots wait for the first line, at the top
+    private var intro: Bool { player.lineStart(0) > 3 }
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 16) {
+                    if intro {
+                        Breath(player: player, from: 0, to: player.lineStart(0), active: current == nil, dot: 10)
+                            .frame(height: 29, alignment: .leading)
+                            .shadow(color: .white.opacity(current == nil ? 0.35 : 0), radius: 10)
+                            .id(-1)
+                    }
                     ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
                         let active = i == current
                         Group {
-                            if active && !line.text.isEmpty && player.wordByWord {
+                            if line.text.isEmpty {
+                                Breath(player: player, from: player.lineStart(i), to: end(of: i), active: active, dot: 10)
+                                    .frame(height: 29, alignment: .leading)
+                            } else if active && player.wordByWord {
                                 // The line being sung lights up word by word
                                 TimelineView(.animation(minimumInterval: 1.0 / 30)) { _ in Karaoke.text(player, lines, i, dim: 0.5) }
                             } else {
-                                Text(line.text.isEmpty ? "♪" : line.text)
-                                    .foregroundColor(.white.opacity(active && !line.text.isEmpty ? 1 : hovered == i ? 0.7 : i < (current ?? 0) ? 0.28 : 0.42))
+                                Text(line.text)
+                                    .foregroundColor(.white.opacity(active ? 1 : hovered == i ? 0.7 : i < (current ?? 0) ? 0.28 : 0.42))
                             }
                         }
                             .font(.system(size: 24, weight: .bold))
@@ -568,32 +656,44 @@ struct SyncedLyrics: View {
                             .id(i)
                     }
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 220)
+                .padding(.horizontal, inset)
+                // Little room above: the first lines start at the top. Plenty below, for the last one to come up
+                .padding(.top, lyricsTop)
+                .padding(.bottom, 340)
             }
             .mask(fadeEdges)
             .onAppear {
                 // No animation: coming back from the small strip, the list must already be on the right line
-                guard let current else { return }
                 var instant = Transaction()
                 instant.disablesAnimations = true
-                withTransaction(instant) { proxy.scrollTo(current, anchor: UnitPoint(x: 0, y: 0.35)) }
+                withTransaction(instant) { scroll(proxy) }
             }
-            .onChange(of: current) { _, new in
-                guard let new else { return }
-                withAnimation(.spring(response: 0.7, dampingFraction: 0.85)) { proxy.scrollTo(new, anchor: UnitPoint(x: 0, y: 0.35)) }
+            .onChange(of: current) { _, _ in
+                withAnimation(.spring(response: 0.7, dampingFraction: 0.85)) { scroll(proxy) }
             }
         }
         .animation(.easeOut(duration: 0.35), value: current)
     }
+
+    /// The line being sung comes up to 40 % of the window. The first lines can't go that high: they stay at the top
+    /// and the light moves down to them
+    private func scroll(_ proxy: ScrollViewProxy) {
+        proxy.scrollTo(current ?? (intro ? -1 : 0), anchor: UnitPoint(x: 0, y: 0.4))
+    }
+
+    private func end(of i: Int) -> Double {
+        i + 1 < lines.count ? player.lineStart(i + 1) : (player.track?.duration ?? player.lineStart(i) + 4)
+    }
 }
 
-/// Small strip: the current line, and the next one dimmer
+/// Small strip: the current line, and the next one dimmer. Centered in the strip, however long they are
 struct CompactLyrics: View {
     let lines: [Line]
     let current: Int?
     /// Read on every frame for the words of the current line
     let player: Player
+    /// Room for the text (pt)
+    let width: CGFloat
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -606,33 +706,61 @@ struct CompactLyrics: View {
         .animation(.spring(response: 0.5, dampingFraction: 0.85), value: current)
     }
 
-    /// Long lines shrink until they fit whole, instead of being cut with "…"
     var pair: some View {
         VStack(alignment: .leading, spacing: 6) {
-            TimelineView(.animation(minimumInterval: 1.0 / 30)) { _ in karaoke(current ?? -1) }
-                .font(.system(size: 20, weight: .bold))
-                .lineLimit(3)
-                .minimumScaleFactor(0.5)
-                .frame(maxHeight: 58, alignment: .bottomLeading)
-                .padding(.trailing, 88)   // room for the buttons
-            Text(text((current ?? -1) + 1))
+            sung(current)
+            upcoming((current ?? -1) + 1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The line being sung, as big as it can be: smaller only when it wouldn't fit on two lines, never cut with "…".
+    /// Dots before the first line and during breaks
+    @ViewBuilder func sung(_ index: Int?) -> some View {
+        if let i = index, i < lines.count, !lines[i].text.isEmpty {
+            let size = Self.fontSize(lines[i].text, width: width)
+            TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !player.wordByWord)) { _ in
+                if size > 0 {
+                    // Takes just its own height, so the pair stays centered
+                    karaoke(i).font(.system(size: size, weight: .bold)).fixedSize(horizontal: false, vertical: true)
+                } else {
+                    karaoke(i).font(.system(size: 16, weight: .bold)).lineLimit(3).minimumScaleFactor(0.6).frame(maxHeight: 58, alignment: .leading)
+                }
+            }
+        } else if (index ?? -1) < lines.count {
+            let next = (index ?? -1) + 1
+            Breath(player: player, from: index.map { player.lineStart($0) } ?? 0,
+                   to: next < lines.count ? player.lineStart(next) : (player.track?.duration ?? 0), active: true, dot: 8)
+                .frame(height: 24, alignment: .leading)
+        }
+    }
+
+    /// The next line, dimmer: dots if a break comes next, nothing after the last line
+    @ViewBuilder func upcoming(_ i: Int) -> some View {
+        if i < lines.count && lines[i].text.isEmpty {
+            Breath(player: player, from: 0, to: 0, active: false, dot: 6).frame(height: 18, alignment: .leading)
+        } else if i < lines.count {
+            Text(lines[i].text)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.white.opacity(0.42))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     func karaoke(_ i: Int) -> Text {
-        guard i >= 0, i < lines.count, !lines[i].text.isEmpty, player.wordByWord else { return Text(text(i)).foregroundColor(.white) }
-        return Karaoke.text(player, lines, i, dim: 0.38)
+        player.wordByWord ? Karaoke.text(player, lines, i, dim: 0.38) : Text(lines[i].text).foregroundColor(.white)
     }
 
-    /// Before the first line: ♪ ; after the last one: nothing
-    func text(_ i: Int) -> String {
-        guard i < lines.count else { return "" }
-        return i < 0 || lines[i].text.isEmpty ? "♪" : lines[i].text
+    /// 20 pt if the line fits on 2 lines of `width`, otherwise 16 pt on 3; 0 if even that's too long (it then shrinks)
+    static func fontSize(_ text: String, width: CGFloat) -> CGFloat {
+        for (size, rows) in [(CGFloat(20), 2.0), (16, 3.0)] {
+            let font = NSFont.systemFont(ofSize: size, weight: .bold)
+            let height = (text as NSString).boundingRect(with: NSSize(width: width, height: .greatestFiniteMagnitude),
+                                                         options: [.usesLineFragmentOrigin], attributes: [.font: font]).height
+            if height <= (font.ascender - font.descender + font.leading) * rows + 2 { return size }
+        }
+        return 0
     }
 }
 
@@ -680,6 +808,8 @@ final class LyricsController {
 
     /// config.txt "delay"
     var delay = 0.0 { didSet { player?.delay = delay } }
+    /// config.txt "buttons = column"
+    var buttonColumn = false { didSet { player?.buttonColumn = buttonColumn } }
 
     /// "listen" changed in config.txt: start (or stop) listening to the song playing now, not from the next one
     func listeningChanged() { player?.followed() }
@@ -687,6 +817,7 @@ final class LyricsController {
     func show() {
         let player = Player()
         player.delay = delay
+        player.buttonColumn = buttonColumn
         let host = HostingView(rootView: LyricsView(player: player,
                                                     toggleCompact: { [weak self] in self?.setCompact(!player.compact) },
                                                     onClose: { [weak self] in self?.close() }))
