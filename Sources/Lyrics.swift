@@ -173,6 +173,10 @@ final class Player: ObservableObject {
     @Published var compact = UserDefaults.standard.bool(forKey: "compactLyrics") {
         didSet { UserDefaults.standard.set(compact, forKey: "compactLyrics") }
     }
+    /// ♪ button: the line being sung lights up word by word, otherwise all at once
+    @Published var wordByWord = UserDefaults.standard.object(forKey: "lyricsWordByWord") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(wordByWord, forKey: "lyricsWordByWord") }
+    }
 
     /// Position (s) reported by Spotify at `syncedAt`: interpolated in between
     private var progress = 0.0
@@ -424,13 +428,18 @@ struct LyricsView: View {
                 }
             }
             .lineLimit(1)
-            Spacer(minLength: 48)   // room for the buttons, laid on top
+            Spacer(minLength: 84)   // room for the buttons, laid on top
         }
         .padding(16)
     }
 
     var buttons: some View {
         HStack(spacing: 8) {
+            // Lit while the words light up one by one; dimmed, the whole line lights up at once
+            roundButton("music.note", on: player.wordByWord) {
+                withAnimation(.easeInOut(duration: 0.2)) { player.wordByWord.toggle() }
+            }
+            .help(player.wordByWord ? L("Word by word: on", "Mot à mot : activé") : L("Word by word: off", "Mot à mot : désactivé"))
             roundButton(player.compact ? "arrow.up.left.and.arrow.down.right" : "arrow.down.right.and.arrow.up.left",
                         action: toggleCompact)
             .help(player.compact ? L("Expand", "Agrandir") : L("Shrink", "Réduire"))
@@ -438,14 +447,15 @@ struct LyricsView: View {
         }
     }
 
-    func roundButton(_ symbol: String, action: @escaping () -> Void) -> some View {
+    /// `on`: a switch, lit when on and dimmed when off; nil for a plain button
+    func roundButton(_ symbol: String, on: Bool? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .contentTransition(.symbolEffect(.replace))
                 .font(.system(size: 9, weight: .bold))
-                .foregroundColor(.white.opacity(0.7))
+                .foregroundColor(.white.opacity(on == true ? 1 : on == false ? 0.35 : 0.7))
                 .frame(width: 20, height: 20)
-                .background(Circle().fill(.white.opacity(0.12)))
+                .background(Circle().fill(.white.opacity(on == true ? 0.3 : on == false ? 0.06 : 0.12)))
         }
         .buttonStyle(.plain)
     }
@@ -540,12 +550,12 @@ struct SyncedLyrics: View {
                     ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
                         let active = i == current
                         Group {
-                            if active && !line.text.isEmpty {
+                            if active && !line.text.isEmpty && player.wordByWord {
                                 // The line being sung lights up word by word
                                 TimelineView(.animation(minimumInterval: 1.0 / 30)) { _ in Karaoke.text(player, lines, i, dim: 0.5) }
                             } else {
                                 Text(line.text.isEmpty ? "♪" : line.text)
-                                    .foregroundColor(.white.opacity(hovered == i ? 0.7 : i < (current ?? 0) ? 0.28 : 0.42))
+                                    .foregroundColor(.white.opacity(active && !line.text.isEmpty ? 1 : hovered == i ? 0.7 : i < (current ?? 0) ? 0.28 : 0.42))
                             }
                         }
                             .font(.system(size: 24, weight: .bold))
@@ -604,7 +614,7 @@ struct CompactLyrics: View {
                 .lineLimit(3)
                 .minimumScaleFactor(0.5)
                 .frame(maxHeight: 58, alignment: .bottomLeading)
-                .padding(.trailing, 60)   // room for the buttons
+                .padding(.trailing, 88)   // room for the buttons
             Text(text((current ?? -1) + 1))
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.white.opacity(0.42))
@@ -615,7 +625,7 @@ struct CompactLyrics: View {
     }
 
     func karaoke(_ i: Int) -> Text {
-        guard i >= 0, i < lines.count, !lines[i].text.isEmpty else { return Text(text(i)).foregroundColor(.white) }
+        guard i >= 0, i < lines.count, !lines[i].text.isEmpty, player.wordByWord else { return Text(text(i)).foregroundColor(.white) }
         return Karaoke.text(player, lines, i, dim: 0.38)
     }
 
