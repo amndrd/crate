@@ -82,13 +82,8 @@ final class LyricsLearner {
         guard enabled, let track, let lines, !lines.isEmpty, playing else { return stopListening(keepTimer: true) }
         if plainSongs[track] == nil { lyrics[track] = lines }
         if let timings = TimingCache.load(track, lines: lines), timings.listens >= listensNeeded { return stopListening(keepTimer: true) }
-        guard #available(macOS 26, *) else {
-            if !warnedVersion {
-                warnedVersion = true
-                Toast.show(L("Listening to time the lyrics needs macOS 26", "L'écoute pour caler les paroles demande macOS 26"), symbol: "waveform")
-            }
-            return
-        }
+        #if compiler(>=6.2)
+        guard #available(macOS 26, *) else { return warnUnavailable() }
         startTimer()
         Task { @MainActor in
             let locale: Locale?
@@ -106,11 +101,25 @@ final class LyricsLearner {
                 if self.listener === listener { self.listener = nil; self.listenerLocale = nil }
             }
         }
+        #else
+        warnUnavailable()
+        #endif
+    }
+
+    private func warnUnavailable() {
+        guard !warnedVersion else { return }
+        warnedVersion = true
+        Toast.show(canListen ? L("Listening to time the lyrics needs macOS 26", "L'écoute pour caler les paroles demande macOS 26")
+                             : L("Listening needs Crate built with Xcode 26: update the Command Line Tools, then run install.sh",
+                                 "L'écoute demande Crate compilé avec Xcode 26 : mets à jour les Command Line Tools, puis relance install.sh"),
+                   symbol: "waveform")
     }
 
     /// The lyrics window closed: stop listening, but keep lining up the words still coming
     func stopListening(keepTimer: Bool = true) {
+        #if compiler(>=6.2)
         if #available(macOS 26, *) { (listener as? AudioListener)?.stop() }
+        #endif
         listener = nil
         listenerLocale = nil
         if !keepTimer { timer?.invalidate(); timer = nil }

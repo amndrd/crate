@@ -186,10 +186,10 @@ listen = on
 - **Seulement quand la fenêtre des paroles est ouverte, seulement Spotify.** Le son va directement à la reconnaissance vocale de macOS, sur ton Mac. Rien n'est enregistré, gardé ni envoyé : Crate ne garde que le moment où chaque mot est chanté.
 - **macOS te demande une fois** d'autoriser Crate à enregistrer l'audio de l'ordinateur (Réglages › Confidentialité et sécurité › Enregistrement de l'écran et de l'audio). Pendant que Crate écoute, l'indicateur d'enregistrement s'affiche dans la barre des menus.
 - **Ça s'améliore à l'écoute.** Les mots sont reconnus quelques secondes après avoir été chantés : la première fois qu'un morceau passe, Crate recale surtout les lignes ; dès la fois suivante, chaque mot est à sa place. Après deux écoutes complètes, le morceau est connu et Crate arrête de l'écouter. Une petite onde à côté de l'artiste indique un morceau calé à l'écoute.
-- **Les paroles simples deviennent synchronisées.** Quand LRCLIB n'a que le texte d'un morceau, Crate le synchronise après l'avoir entendu une fois, s'il en a reconnu la plupart des lignes.
+- **Les paroles simples deviennent synchronisées.** Quand LRCLIB n'a que le texte d'un morceau, Crate le synchronise après l'avoir entendu une fois en entier, s'il en a reconnu la plupart des lignes, la première comprise. Sinon le texte reste simple : un minutage faux serait pire.
 - **Langues** : une trentaine (français, anglais, espagnol, allemand, italien, portugais, japonais, chinois…). La première fois, macOS peut télécharger la reconnaissance d'une nouvelle langue. Les autres (le russe par exemple) gardent le minutage de LRCLIB.
 - **Quand il ne peut pas trancher**, avec beaucoup d'Auto-Tune ou une voix noyée dans la musique par exemple, Crate garde le minutage de LRCLIB : l'écoute ne rend jamais les paroles moins bonnes.
-- Il faut macOS 26. Sur les versions plus anciennes, `listen = on` ne fait rien.
+- Il faut macOS 26, et Crate compilé avec les outils d'Apple qui vont avec (Command Line Tools 26 : lance `softwareupdate --list`, installe la mise à jour, puis relance `./install.sh`). Sinon Crate marche comme avant et le signale quand `listen = on`.
 </details>
 
 <details>

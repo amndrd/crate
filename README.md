@@ -178,10 +178,10 @@ listen = on
 - **Only while the lyrics window is open, only Spotify.** The audio goes straight to macOS speech recognition, on your Mac. Nothing is recorded, saved or sent anywhere: Crate only keeps when each word is sung.
 - **macOS asks you once** to allow Crate to record the computer's audio (System Settings › Privacy & Security › Screen & System Audio Recording). While Crate listens, the recording indicator shows in the menu bar.
 - **It gets better as you listen.** The words are recognized a few seconds after they're sung, so the first time a song plays, Crate mostly corrects the lines' timing; from the next time, every word is in place. After two full listens a song is known and Crate stops listening to it. A small waveform next to the artist means the song is timed by listening.
-- **Plain lyrics become synced.** When LRCLIB only has the text of a song, Crate times it after hearing it once, if it recognized most of the lines.
+- **Plain lyrics become synced.** When LRCLIB only has the text of a song, Crate times it after hearing it once in full, if it recognized most of the lines, the first one included. Otherwise the text stays plain: wrong times would be worse.
 - **Languages**: about 30 (English, French, Spanish, German, Italian, Portuguese, Japanese, Chinese…). The first time, macOS may download its recognition for a new language. Others (Russian, for instance) keep LRCLIB's timing.
 - **When it can't tell**, with heavy Auto-Tune or vocals buried in the music for instance, Crate keeps LRCLIB's timing: listening never makes lyrics worse.
-- It needs macOS 26. On older versions, `listen = on` does nothing.
+- It needs macOS 26, and Crate built with Apple's tools for it (Command Line Tools 26: run `softwareupdate --list`, install the update, then `./install.sh` again). Otherwise Crate works as before and says so when `listen = on`.
 </details>
 
 <details>

@@ -17,6 +17,13 @@ struct TimedWord {
     let end: Double
 }
 
+// The listening itself needs Apple's tools for macOS 26 (Swift 6.2): built with older ones, Crate simply can't listen
+#if compiler(>=6.2)
+let canListen = true
+#else
+let canListen = false
+#endif
+
 // MARK: - Core Audio
 
 private enum HAL {
@@ -52,14 +59,17 @@ private enum HAL {
         return ids
     }
 
+    static var defaultOutput: AudioDeviceID { value(system, kAudioHardwarePropertyDefaultSystemOutputDevice, AudioDeviceID(0)) }
+}
+
+#if compiler(>=6.2)
+extension HAL {
     /// The Spotify app's audio processes (it may have helpers)
     static func spotifyProcesses() -> [AudioObjectID] {
         objects(system, kAudioHardwarePropertyProcessObjectList).filter {
             (string($0, kAudioProcessPropertyBundleID) ?? "").hasPrefix(Spotify.bundleID)
         }
     }
-
-    static var defaultOutput: AudioDeviceID { value(system, kAudioHardwarePropertyDefaultSystemOutputDevice, AudioDeviceID(0)) }
 }
 
 /// Spotify's audio, as it plays. Muted for Crate's tests only: by default Spotify is heard as usual
@@ -149,6 +159,8 @@ private final class SpotifyTap {
     deinit { stop() }
 }
 
+#endif
+
 /// How long the sound takes to come out of the current speakers or headphones (s): a few ms built in, 0.1–0.3 s over Bluetooth
 func currentOutputLatency() -> Double {
     let device = HAL.value(HAL.system, kAudioHardwarePropertyDefaultOutputDevice, AudioDeviceID(0))
@@ -163,6 +175,7 @@ func currentOutputLatency() -> Double {
 
 // MARK: - Listening
 
+#if compiler(>=6.2)
 @available(macOS 26, *)
 final class AudioListener {
     let locale: Locale
@@ -348,3 +361,4 @@ final class AudioListener {
         }
     }
 }
+#endif
