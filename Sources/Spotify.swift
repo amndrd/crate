@@ -58,7 +58,7 @@ enum Spotify {
     private static var lastPermissionHelp = Date.distantPast
 
     static func showPermissionHelp() {
-        // Spotify is also asked in the background (capsule, notch): once a minute is enough
+        // Spotify is also asked in the background (notch): once a minute is enough
         guard Date().timeIntervalSince(lastPermissionHelp) > 60 else { return }
         lastPermissionHelp = Date()
         Toast.show(L("Allow Crate to control Spotify: System Settings › Privacy & Security › Automation",

@@ -12,9 +12,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotKeyRefs: [EventHotKeyRef] = []
     private let picker = PickerController()
     private let lyrics = LyricsController()
-    /// What Spotify plays, for the capsule (new song) and the notch
+    /// What Spotify plays, for the notch
     private let playback = PlaybackMonitor()
-    private let capsule = CapsuleController()
     private lazy var notch = NotchController(playback: playback)
     /// Playlist launched last from the picker
     private var lastPlayed: String? {
@@ -25,10 +24,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         shared = self
         installHotKeyHandler()
-        playback.onSkippedTo = { [weak self] track, cover, tint in
-            guard let self, self.config.capsule else { return }
-            self.capsule.show(track: track, cover: cover, tint: tint)
-        }
         reloadConfig(announce: false)
 
         picker.playingURI = { [weak self] in self?.lastPlayed }
@@ -77,7 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case "next":
             if Spotify.isRunning {
                 Spotify.next()
-                playback.expectSkip()   // the next song gets the capsule
+                playback.pollSoon()   // the notch shows the new song right away
             } else { Toast.show(L("Spotify isn't open", "Spotify n'est pas ouvert"), symbol: "speaker.slash.fill") }
         case "hello":
             let key = config.shortcuts["picker"]?.symbol ?? "?"
@@ -127,7 +122,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let shortcutsChanged = new.shortcuts != config.shortcuts || hotKeyRefs.isEmpty
         config = new
         if shortcutsChanged { registerHotKeys() }
-        playback.setRunning(new.capsule || new.notch)
+        playback.setRunning(new.notch)
         notch.setEnabled(new.notch)
         if LyricsLearner.shared.enabled != new.listen {
             LyricsLearner.shared.enabled = new.listen
