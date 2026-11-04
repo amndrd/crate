@@ -29,7 +29,7 @@
 Your playlists pop up as a crate of records. Hover a sleeve and its vinyl slides out and spins, while the background takes on the cover's color. Click it, or press its number, and it starts playing on shuffle. Spotify stays out of sight, even if it was closed.
 
 <p align="center">
-  <img src="docs/screenshots/picker.gif" alt="The picker: records slide out of their sleeves and spin, a click starts the playlist" width="100%">
+  <img src="docs/screenshots/picker-crate.gif" alt="The picker: records slide out of their sleeves and spin, a click starts the playlist" width="100%">
 </p>
 
 ### Now playing, in the notch
