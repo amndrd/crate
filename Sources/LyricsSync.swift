@@ -215,7 +215,15 @@ extension LyricsAligner {
         let placed = starts.indices.filter { starts[$0] != nil }
         guard let first = placed.first, let final = placed.last,
               Double(placed.count) >= minPlaced * Double(texts.count),
-              first <= 2, texts.count - 1 - final <= 2 else { return nil }   // the start and the end must have been heard
+              first == 0, texts.count - 1 - final <= 1 else { return nil }
+        // The first line is what's seen first: several of its words recognized, and sung only once, so it can't be
+        // a repeat of the chorus taken for another. The last placed line, recognized too
+        let keys = texts.map { normalize($0) }
+        guard result.anchors[0] >= 2, keys.filter({ $0 == keys[0] }).count == 1, result.anchors[final] >= 2 else { return nil }
+        // Singing heard well before the first line or well after the last one: the edges are wrong
+        let sung = heard.filter { normalize($0.text).count >= 3 }
+        if let firstSung = sung.first?.start, let lastSung = sung.last?.start, let s0 = starts[first], let s1 = starts[final],
+           s0 > firstSung + 4 || s1 < lastSung - 8 { return nil }
 
         // How fast this song is sung (s per character), to place the few lines in between
         var chars: [Int] = [], total = 0
@@ -226,7 +234,7 @@ extension LyricsAligner {
         }.sorted()
         let rate = rates.isEmpty ? 0.1 : min(0.2, max(0.04, rates[rates.count / 2]))
         return texts.indices.map { i in
-            if let s = starts[i] { return Line(t: s, text: texts[i]) }
+            if let s = starts[i] { return Line(t: min(max(0, s), duration), text: texts[i]) }
             let before = placed.last { $0 < i }, after = placed.first { $0 > i }
             let t: Double
             if let b = before, let a = after, let sb = starts[b], let sa = starts[a] {
@@ -236,7 +244,7 @@ extension LyricsAligner {
             } else {
                 t = max(0, starts[first]! - Double(chars[first] - chars[i]) * rate)
             }
-            return Line(t: t, text: texts[i])
+            return Line(t: min(max(0, t), duration), text: texts[i])
         }
     }
 
