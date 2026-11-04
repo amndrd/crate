@@ -45,6 +45,8 @@ struct NotchOutline: Shape {
 }
 
 final class NotchModel: ObservableObject {
+    /// A song is loaded: the notch has widened around the camera (false: only the camera's own black shape)
+    @Published var shown = false
     @Published var open = false
     let notch: CGSize
     init(notch: CGSize) { self.notch = notch }
@@ -77,10 +79,12 @@ struct NotchView: View {
 
     var body: some View {
         let open = model.open
+        let shown = model.shown
         let notch = model.notch
-        let width = open ? NotchSize.openWidth : notch.width + 2 * NotchSize.ear
+        // Hidden, the shape is just the camera's notch; shown, it widens on both sides (same spring as opening)
+        let width = open ? NotchSize.openWidth : notch.width + (shown ? 2 * NotchSize.ear : 0)
         let height = open ? notch.height + NotchSize.openBelow : notch.height
-        let flare: CGFloat = open ? NotchSize.openFlare : 6
+        let flare: CGFloat = open ? NotchSize.openFlare : shown ? 6 : 0
         let outline = NotchOutline(flare: flare, radius: open ? 28 : 10)
 
         ZStack(alignment: .top) {
@@ -88,7 +92,7 @@ struct NotchView: View {
                 NotchPlayer(playback: playback, notchHeight: notch.height)
                     .transition(.asymmetric(insertion: .opacity.animation(.easeOut(duration: 0.2).delay(0.12)),
                                             removal: .opacity.animation(.easeIn(duration: 0.1))))
-            } else {
+            } else if shown {
                 NotchGlance(playback: playback, width: width, height: notch.height)
                     .transition(.asymmetric(insertion: .opacity.animation(.easeOut(duration: 0.2).delay(0.15)),
                                             removal: .opacity.animation(.easeIn(duration: 0.08))))
@@ -101,6 +105,7 @@ struct NotchView: View {
         .shadow(color: .black.opacity(open ? 0.4 : 0), radius: 24, y: 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: open)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: shown)
     }
 }
 
@@ -322,25 +327,22 @@ final class NotchController {
         wanted = true
         guard enabled, let found = NotchGeometry.find() else { return }
         if panel == nil || geometry != found { build(found) }
-        guard let panel else { return }
-        if !panel.isVisible { panel.alphaValue = 0 }
+        guard let panel, let model else { return }
+        panel.alphaValue = 1
         panel.orderFrontRegardless()
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.3
-            panel.animator().alphaValue = 1
-        }
+        // Shown as the camera's black notch first, then it widens on both sides, like when it opens
+        DispatchQueue.main.async { model.shown = true }
     }
 
     private func hide() {
         wanted = false
         setOpen(false)
         guard let panel, panel.isVisible else { return }
-        NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.3
-            panel.animator().alphaValue = 0
-        }, completionHandler: { [weak self] in
+        // Narrows back into the camera's notch, then goes
+        model?.shown = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             if self?.wanted != true { panel.orderOut(nil) }
-        })
+        }
     }
 
     private func rebuild() {
@@ -369,7 +371,7 @@ final class NotchController {
     }
 
     private func mouseMoved() {
-        guard let panel, panel.isVisible, panel.alphaValue > 0.5, let g = geometry, let model else { return }
+        guard let panel, panel.isVisible, let g = geometry, let model, model.shown else { return }
         let mouse = NSEvent.mouseLocation
         let zone: CGRect
         if model.open {
