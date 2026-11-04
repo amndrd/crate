@@ -5,7 +5,8 @@ import SwiftUI
 // Lyrics come from LRCLIB (free, open database) and are cached in ~/Library/Caches/Crate/lyrics.
 // Floats above other windows without stealing focus; click a line to jump there in the song.
 // The button left of × shrinks it to a small strip with just the current line (karaoke, word by word) and the next one
-// (remembered between openings). The strip's buttons show when the mouse is over it, or stay on its right (config).
+// (remembered between openings). The buttons show when the mouse is over the window, or stay on the strip's right (config).
+// It opens at its header's height and unrolls downward, and rolls back up when closed.
 
 let fullSize = NSSize(width: 400, height: 560)
 let compactSize = NSSize(width: 400, height: 108)
@@ -181,6 +182,10 @@ final class Player: ObservableObject {
     @Published var wordByWord = UserDefaults.standard.object(forKey: "lyricsWordByWord") as? Bool ?? true {
         didSet { UserDefaults.standard.set(wordByWord, forKey: "lyricsWordByWord") }
     }
+    /// Opening: the card shows at its header's height and unrolls down (false → true) while the lyrics come in.
+    /// Closing: the reverse
+    @Published var unrolled = false
+    @Published var contentShown = false
 
     /// Position (s) reported by Spotify at `syncedAt`: interpolated in between
     private var progress = 0.0
@@ -368,7 +373,9 @@ struct LyricsView: View {
     @State private var hovering = false
     /// Strip: buttons stacked on the right ("buttons = column" in config.txt); otherwise they show on hover only
     private var column: Bool { player.compact && player.buttonColumn }
-    private var hidden: Bool { player.compact && !player.buttonColumn && !hovering }
+    /// Buttons on hover (window and strip), over a shade; with "buttons = column" the window keeps them in view
+    private var onHover: Bool { !player.buttonColumn }
+    private var hidden: Bool { onHover && !hovering }
 
     var body: some View {
         // Each layout keeps its own fixed size: the animated card crops them instead of laying them out again
@@ -379,14 +386,11 @@ struct LyricsView: View {
                 fullLayout.transition(.soft)
             }
         }
-        .frame(width: fullSize.width, height: (player.compact ? compactSize : fullSize).height, alignment: .top)
-        // Strip, on hover: a shade under the buttons, so they stay readable over the words
-        .overlay {
-            if player.compact && !player.buttonColumn && hovering {
-                LinearGradient(colors: [.black.opacity(0.55), .clear], startPoint: .trailing, endPoint: UnitPoint(x: 0.45, y: 0.5))
-                    .allowsHitTesting(false)
-                    .transition(.opacity)
-            }
+        // Opening: the card unrolls from its header (the strip: from a little shorter), down to its full height
+        .frame(width: fullSize.width, height: player.unrolled ? (player.compact ? compactSize : fullSize).height : unrollFrom, alignment: .top)
+        // On hover: a shade under the buttons, so they stay readable over the words
+        .overlay(alignment: .top) {
+            if onHover && hovering { shade.transition(.opacity) }
         }
         .overlay(alignment: column ? .trailing : .topTrailing) {
             Group {
@@ -395,7 +399,7 @@ struct LyricsView: View {
             // Window: centered on the cover. Strip: in the corner, or centered on the right
             .padding(.top, player.compact ? (column ? 0 : 14) : inset + 23 - 10)
             .padding(.trailing, player.compact ? 14 : inset)
-            .opacity(hidden ? 0 : 1)
+            .opacity(hidden || !player.contentShown ? 0 : 1)
         }
         .onHover { over in withAnimation(.easeInOut(duration: 0.2)) { hovering = over } }
         .background(LinearGradient(colors: [.black.opacity(0.2), .black.opacity(0.5)], startPoint: .top, endPoint: .bottom))
@@ -408,10 +412,25 @@ struct LyricsView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
+    /// Height the card unrolls from when the window opens, and rolls back up to when it closes: the window's header
+    /// (cover, title, artist), the strip a little shorter than itself
+    private var unrollFrom: CGFloat { player.compact ? 64 : headerHeight }
+
+    /// From the right edge, as tall as the strip and fading out below it: the same in the window and in the strip,
+    /// so it stays put while the card changes size (the card crops it)
+    var shade: some View {
+        LinearGradient(colors: [.black.opacity(0.55), .clear], startPoint: .trailing, endPoint: UnitPoint(x: 0.45, y: 0.5))
+            .mask(LinearGradient(stops: [.init(color: .black, location: 0.5), .init(color: .clear, location: 1)],
+                                 startPoint: .top, endPoint: .bottom))
+            .frame(height: compactSize.height * 1.6)
+            .allowsHitTesting(false)
+    }
+
     /// The lyrics go up under the header, fading out: they can start right below it, and still leave softly
     var fullLayout: some View {
         ZStack(alignment: .top) {
             content(compact: false).frame(maxWidth: .infinity, maxHeight: .infinity)
+                .modifier(SoftFade(amount: player.contentShown ? 0 : 1))   // coming in as the card unrolls
             header.contentShape(Rectangle())   // no click on the lyrics hidden under it
         }
         .frame(width: fullSize.width, height: fullSize.height)
@@ -618,6 +637,7 @@ struct SyncedLyrics: View {
     let player: Player
     let onSeek: (Double) -> Void
     @State private var hovered: Int?
+    @State private var appearedAt = Date.distantPast
 
     /// The song starts with music only: dots wait for the first line, at the top
     private var intro: Bool { player.lineStart(0) > 3 }
@@ -663,13 +683,16 @@ struct SyncedLyrics: View {
             }
             .mask(fadeEdges)
             .onAppear {
-                // No animation: coming back from the small strip, the list must already be on the right line
-                var instant = Transaction()
-                instant.disablesAnimations = true
-                withTransaction(instant) { scroll(proxy) }
+                appearedAt = Date()
+                settle(proxy)
             }
             .onChange(of: current) { _, _ in
-                withAnimation(.spring(response: 0.7, dampingFraction: 0.85)) { scroll(proxy) }
+                // Just opened, the line being sung was found: straight there, without scrolling through the song
+                if Date().timeIntervalSince(appearedAt) < 0.6 {
+                    settle(proxy)
+                } else {
+                    withAnimation(.spring(response: 0.7, dampingFraction: 0.85)) { scroll(proxy) }
+                }
             }
         }
         .animation(.easeOut(duration: 0.35), value: current)
@@ -678,7 +701,20 @@ struct SyncedLyrics: View {
     /// The line being sung comes up to 40 % of the window. The first lines can't go that high: they stay at the top
     /// and the light moves down to them
     private func scroll(_ proxy: ScrollViewProxy) {
-        proxy.scrollTo(current ?? (intro ? -1 : 0), anchor: UnitPoint(x: 0, y: 0.4))
+        proxy.scrollTo(player.current ?? (intro ? -1 : 0), anchor: UnitPoint(x: 0, y: 0.4))
+    }
+
+    /// On the line at once, without animation (coming back from the strip, or opening). Again a little later: in a
+    /// window that has just opened, the list isn't laid out yet and a scroll right away does nothing (it stayed at the
+    /// top, the line being sung out of sight)
+    private func settle(_ proxy: ScrollViewProxy) {
+        let jump = {
+            var instant = Transaction()
+            instant.disablesAnimations = true
+            withTransaction(instant) { scroll(proxy) }
+        }
+        jump()
+        for delay in [0.1, 0.3] { DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: jump) }
     }
 
     private func end(of i: Int) -> Double {
@@ -832,8 +868,33 @@ final class LyricsController {
         }
         panel.setFrameAutosaveName("CrateLyrics")
         resize(panel, compact: player.compact)   // the saved size may be the other mode's
-        panel.fadeIn(duration: 0.2)
+        // The card fades in at its header's height, then unrolls downward while the lyrics come in on it. The fade is
+        // the window's own: the blurred backdrop is drawn by macOS and only follows the window's opacity
+        panel.animationBehavior = .none
+        panel.alphaValue = 0
+        panel.orderFrontRegardless()
+        panel.contentView?.layoutSubtreeIfNeeded()
         player.start()
+        // Nothing shows until the song and its lyrics are there (or 0.4 s): no empty card, and laying the lyrics out
+        // takes a moment that would stall the animation halfway
+        var waited = 0.0
+        let unroll = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] timer in
+            waited += 1.0 / 60
+            let loaded = player.ready && (player.track == nil || player.track?.isAd == true || player.lyrics != nil)
+            guard loaded || waited > 0.4, self?.panel === panel else { return }
+            timer.invalidate()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) {
+                NSAnimationContext.runAnimationGroup { ctx in
+                    ctx.duration = 0.22
+                    ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                    panel.animator().alphaValue = 1
+                }
+                withAnimation(.spring(duration: 0.6, bounce: 0.1).delay(0.14)) { player.unrolled = true }
+                withAnimation(.easeOut(duration: 0.45).delay(0.24)) { player.contentShown = true }
+                self?.followShadow(panel, for: 1.0)
+            }
+        }
+        RunLoop.main.add(unroll, forMode: .common)
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53, event.window === self?.panel { self?.close(); return nil }   // esc, after a click in the window
             // ← →: this song's lyrics earlier / later
@@ -855,10 +916,14 @@ final class LyricsController {
             if compact && player.compact && self.panel === panel { resize(panel, compact: true) }
             panel.invalidateShadow()
         }
-        // The window shadow follows the card's shape during the animation
+        followShadow(panel, for: 0.7)
+    }
+
+    /// The window shadow follows the card's shape while it animates
+    private func followShadow(_ panel: Panel, for seconds: Double) {
         let shadow = Timer(timeInterval: 1.0 / 60, repeats: true) { _ in panel.invalidateShadow() }
         RunLoop.main.add(shadow, forMode: .common)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { shadow.invalidate() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { shadow.invalidate() }
     }
 
     /// Size of the mode, keeping the top of the window in place (without leaving the screen)
@@ -874,11 +939,17 @@ final class LyricsController {
         player?.stop()
         if let monitor { NSEvent.removeMonitor(monitor) }
         monitor = nil
-        guard let panel else { return }
+        guard let panel, let player else { return }
         self.panel = nil
+        self.player = nil
+        // Rolls back up to its top edge, fading out (the window too, for the backdrop)
+        withAnimation(.easeIn(duration: 0.12)) { player.contentShown = false }
+        withAnimation(.spring(duration: 0.3, bounce: 0)) { player.unrolled = false }
         NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.15
+            ctx.duration = 0.28
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
             panel.animator().alphaValue = 0
         }, completionHandler: { panel.orderOut(nil) })
+        followShadow(panel, for: 0.3)
     }
 }

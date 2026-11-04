@@ -33,7 +33,7 @@ struct Config: Equatable {
     /// [lyrics] section: listen to Spotify to time the words (macOS 26), and move all lyrics earlier / later (s)
     var listen = false
     var lyricsDelay = 0.0
-    /// The small strip's buttons: shown on hover (default), or always, stacked on its right
+    /// The lyrics buttons: shown on hover (default), or always, stacked on the small strip's right
     var lyricsButtonColumn = false
     /// Lines that couldn't be understood, to tell the user
     var problems: [String] = []
