@@ -22,6 +22,8 @@
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>With "listen = on", Crate listens to Spotify only, to time the lyrics to the words being sung. The audio is analyzed on your Mac and never saved.</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>Crate controls the Spotify app to play your playlists, skip tracks and sync lyrics.</string>
 </dict>

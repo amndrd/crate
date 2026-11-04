@@ -129,6 +129,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if shortcutsChanged { registerHotKeys() }
         playback.setRunning(new.capsule || new.notch)
         notch.setEnabled(new.notch)
+        if LyricsLearner.shared.enabled != new.listen {
+            LyricsLearner.shared.enabled = new.listen
+            lyrics.listeningChanged()
+        }
+        lyrics.delay = new.lyricsDelay
         if new.unreadable {
             Toast.show(L("Crate can't open config.txt: move the Crate folder to your home folder and run install.sh again",
                          "Crate n'arrive pas à ouvrir config.txt : déplace le dossier Crate dans ton dossier personnel et relance install.sh"),

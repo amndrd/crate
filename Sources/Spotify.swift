@@ -66,6 +66,22 @@ enum Spotify {
                    symbol: "lock.fill")
     }
 
+    private static var warnedSilence = false
+
+    /// Crate listens to Spotify but hears nothing: if Spotify really plays with some volume,
+    /// macOS hasn't allowed Crate to record the audio. Said once
+    static func warnIfSilent() {
+        queue.async {
+            guard !warnedSilence else { return }
+            let volume = run(ifRunning("if player state is playing then return sound volume", otherwise: "return 0"))?.int32Value ?? 0
+            guard volume > 0 else { return }
+            warnedSilence = true
+            Toast.show(L("Crate can't hear Spotify: allow it in System Settings › Privacy & Security › Screen & System Audio Recording",
+                         "Crate n'entend pas Spotify : autorise-le dans Réglages › Confidentialité et sécurité › Enregistrement de l'écran et de l'audio"),
+                       symbol: "waveform.slash")
+        }
+    }
+
     // MARK: Playback
 
     /// Plays a playlist on shuffle, launching Spotify hidden if needed. Calls `done` with an error message, or nil.

@@ -28,3 +28,11 @@ next = cmd+option+=
 
 capsule = on
 notch = on
+
+[lyrics]
+# macOS 26: Crate can listen to Spotify (and only Spotify) to light each word up exactly when it's sung.
+# The audio is analyzed on your Mac and never saved; macOS asks you once to allow it. Write "on" to try it.
+listen = off
+# Lyrics a little early or late (Bluetooth headphones…)? Move them all, in seconds: + later, - earlier.
+# For one song only: ← and → in the lyrics window.
+delay = 0

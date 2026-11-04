@@ -10,5 +10,6 @@ pkill -x Crate 2>/dev/null
 rm -rf Crate.app "$HOME/Library/Caches/Crate" "$HOME/Library/Application Support/Crate"
 defaults delete "$LABEL" 2>/dev/null
 tccutil reset AppleEvents "$LABEL" >/dev/null 2>&1
+tccutil reset AudioCapture "$LABEL" >/dev/null 2>&1
 
 echo "✓ Crate is uninstalled. You can now delete this folder."

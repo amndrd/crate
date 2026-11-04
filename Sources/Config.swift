@@ -30,6 +30,9 @@ struct Config: Equatable {
     /// [now playing] section: the card when a song starts, the cover and bars around the notch
     var capsule = true
     var notch = true
+    /// [lyrics] section: listen to Spotify to time the words (macOS 26), and move all lyrics earlier / later (s)
+    var listen = false
+    var lyricsDelay = 0.0
     /// Lines that couldn't be understood, to tell the user
     var problems: [String] = []
     /// config.txt exists but macOS won't let Crate read it (folder protected by privacy settings)
@@ -67,6 +70,22 @@ struct Config: Equatable {
                 switch key {
                 case "capsule": config.capsule = on
                 case "notch": config.notch = on
+                default: config.problems.append(line)
+                }
+            } else if section == "lyrics" {
+                guard let eq = line.firstIndex(of: "=") else { config.problems.append(line); continue }
+                let key = line[..<eq].trimmingCharacters(in: .whitespaces).lowercased()
+                let value = line[line.index(after: eq)...].trimmingCharacters(in: .whitespaces).lowercased()
+                switch key {
+                case "listen":
+                    let on = ["on", "yes", "true", "oui"].contains(value)
+                    guard on || ["off", "no", "false", "non", "none"].contains(value) else { config.problems.append(line); continue }
+                    config.listen = on
+                case "delay":
+                    // "0.3", "-0,2", "+0.1 s"
+                    let number = value.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: "s", with: "").trimmingCharacters(in: .whitespaces)
+                    guard let seconds = Double(number), abs(seconds) <= 5 else { config.problems.append(line); continue }
+                    config.lyricsDelay = seconds
                 default: config.problems.append(line)
                 }
             } else if let entry = parsePlaylist(line) {
