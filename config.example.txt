@@ -36,3 +36,5 @@ listen = off
 # Lyrics a little early or late (Bluetooth headphones…)? Move them all, in seconds: + later, - earlier.
 # For one song only: ← and → in the lyrics window.
 delay = 0
+# Small strip: its buttons show when the mouse is over it (hover), or stay stacked on its right (column).
+buttons = hover

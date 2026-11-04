@@ -33,6 +33,8 @@ struct Config: Equatable {
     /// [lyrics] section: listen to Spotify to time the words (macOS 26), and move all lyrics earlier / later (s)
     var listen = false
     var lyricsDelay = 0.0
+    /// The small strip's buttons: shown on hover (default), or always, stacked on its right
+    var lyricsButtonColumn = false
     /// Lines that couldn't be understood, to tell the user
     var problems: [String] = []
     /// config.txt exists but macOS won't let Crate read it (folder protected by privacy settings)
@@ -86,6 +88,10 @@ struct Config: Equatable {
                     let number = value.replacingOccurrences(of: ",", with: ".").replacingOccurrences(of: "s", with: "").trimmingCharacters(in: .whitespaces)
                     guard let seconds = Double(number), abs(seconds) <= 5 else { config.problems.append(line); continue }
                     config.lyricsDelay = seconds
+                case "buttons":
+                    if ["hover", "survol"].contains(value) { config.lyricsButtonColumn = false }
+                    else if ["column", "colonne", "right", "droite"].contains(value) { config.lyricsButtonColumn = true }
+                    else { config.problems.append(line) }
                 default: config.problems.append(line)
                 }
             } else if let entry = parsePlaylist(line) {

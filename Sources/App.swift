@@ -134,6 +134,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             lyrics.listeningChanged()
         }
         lyrics.delay = new.lyricsDelay
+        lyrics.buttonColumn = new.lyricsButtonColumn
         if new.unreadable {
             Toast.show(L("Crate can't open config.txt: move the Crate folder to your home folder and run install.sh again",
                          "Crate n'arrive pas à ouvrir config.txt : déplace le dossier Crate dans ton dossier personnel et relance install.sh"),
