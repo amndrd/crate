@@ -1,18 +1,13 @@
 import AppKit
 import SwiftUI
 
-/// Follows what Spotify is playing, for the capsule and the notch.
+/// Follows what Spotify is playing, for the notch.
 /// Spotify announces song changes and play/pause itself: Crate asks for the details right then,
 /// and otherwise only checks every few seconds (every second while the notch player is open).
 final class PlaybackMonitor: ObservableObject {
     /// Song loaded in Spotify, playing or paused; nil when Spotify is closed or stopped
     @Published var track: NowPlaying?
     @Published var cover: NSImage?
-    /// The cover's dominant color, for the capsule's bars
-    @Published var tint = Color(white: 0.6)
-
-    /// The song that comes after a skip with the "next" shortcut, with its cover once it has arrived
-    var onSkippedTo: ((NowPlaying, NSImage?, Color) -> Void)?
 
     private var running = false
     private var fast = false
@@ -24,11 +19,6 @@ final class PlaybackMonitor: ObservableObject {
     private var syncedAt = CACurrentMediaTime()
     /// Last seek: positions asked for before it are stale
     private var seekedAt = 0.0
-    /// Until when the next song change is announced: set by the "next" shortcut, a few seconds
-    private var announceUntil = 0.0
-    /// Song waiting for its cover before being announced
-    private var pending: String?
-    private var coverFor: String?
     private var covers: [String: NSImage] = [:]
 
     /// Where the song is (s), moving on by itself between Spotify's answers
@@ -83,14 +73,6 @@ final class PlaybackMonitor: ObservableObject {
         if app?.bundleIdentifier == Spotify.bundleID { poll() }
     }
 
-    /// The "next" shortcut was pressed: the song that comes next will be announced (the capsule).
-    /// Songs changing on their own, or from the notch's buttons, aren't.
-    func expectSkip() {
-        announceUntil = CACurrentMediaTime() + 5
-        pollSoon()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in self?.poll() }
-    }
-
     /// Asks again in a moment, after a button press (Spotify also announces the change itself)
     func pollSoon() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in self?.poll() }
@@ -129,89 +111,30 @@ final class PlaybackMonitor: ObservableObject {
             progress = new.position
             syncedAt = receivedAt
         }
-        guard changed, let new, !new.isAd, CACurrentMediaTime() < announceUntil else { return }
-        announceUntil = 0
-        // Shown with its cover: waits for it a moment, not longer
-        pending = new.id
-        if coverFor == new.id { announcePending(new.id) }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in self?.announcePending(new.id) }
-    }
-
-    private func announcePending(_ id: String) {
-        guard pending == id, let track, track.id == id else { return }
-        pending = nil
-        onSkippedTo?(track, coverFor == id ? cover : nil, tint)
     }
 
     private func loadCover(_ song: NowPlaying?) {
         guard let song, let link = song.artworkURL, let url = URL(string: link), !link.isEmpty else {
             cover = nil
-            coverFor = nil
             return
         }
-        if let image = covers[link] { return setCover(image, for: song.id) }
+        if let image = covers[link] { return setCover(image) }
         URLSession.shared.dataTask(with: url) { data, _, _ in
             guard let image = data.flatMap(NSImage.init(data:)) else { return }
             DispatchQueue.main.async {
                 if self.covers.count > 30 { self.covers.removeAll() }
                 self.covers[link] = image
-                if self.track?.id == song.id { self.setCover(image, for: song.id) }
+                if self.track?.id == song.id { self.setCover(image) }
             }
         }.resume()
     }
 
-    private func setCover(_ image: NSImage, for id: String) {
-        withAnimation(.easeInOut(duration: 0.3)) {
-            cover = image
-            tint = dominantColor(image)
-        }
-        coverFor = id
-        announcePending(id)
+    private func setCover(_ image: NSImage) {
+        withAnimation(.easeInOut(duration: 0.3)) { cover = image }
     }
 }
 
 // MARK: - Shared pieces
-
-/// Small vinyl with the cover as its label, spinning
-struct RecordDisc: View {
-    let cover: NSImage?
-    let size: CGFloat
-    @State private var angle = 0.0
-
-    var body: some View {
-        ZStack {
-            ZStack {
-                Circle().fill(RadialGradient(colors: [Color(white: 0.15), Color(white: 0.055)], center: .center, startRadius: 0, endRadius: size / 2))
-                Grooves()
-                label
-                    .frame(width: size * 0.48, height: size * 0.48)
-                    .clipShape(Circle())
-                    .overlay(Circle().strokeBorder(.black.opacity(0.4), lineWidth: 0.5))
-            }
-            .rotationEffect(.degrees(angle))
-            // Reflections stay still, like a real light source
-            Circle()
-                .fill(AngularGradient(colors: [.white.opacity(0), .white.opacity(0.22), .white.opacity(0), .white.opacity(0),
-                                               .white.opacity(0.16), .white.opacity(0), .white.opacity(0)],
-                                      center: .center, angle: .degrees(-35)))
-                .mask(Circle().strokeBorder(lineWidth: size * 0.3).padding(size * 0.01))
-            Circle().strokeBorder(LinearGradient(colors: [.white.opacity(0.3), .white.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 0.5)
-            Circle().fill(Color(white: 0.02)).frame(width: size * 0.045, height: size * 0.045)
-        }
-        .frame(width: size, height: size)
-        .onAppear {
-            withAnimation(.linear(duration: 1.8).repeatForever(autoreverses: false)) { angle = 360 }
-        }
-    }
-
-    @ViewBuilder private var label: some View {
-        if let cover {
-            Image(nsImage: cover).resizable().interpolation(.high).aspectRatio(contentMode: .fill)
-        } else {
-            LinearGradient(colors: [spotifyGreen, Color(red: 0.05, green: 0.25, blue: 0.15)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        }
-    }
-}
 
 /// Four equalizer bars. They dance with Core Animation: macOS animates them, Crate itself stays idle,
 /// so they can stay on screen all day. Paused: they stand still, all the same height.
@@ -221,9 +144,8 @@ struct EqualizerBars: NSViewRepresentable {
     var barWidth: CGFloat = 3
     var spacing: CGFloat = 2.5
     var height: CGFloat = 14
-    /// Centered like a waveform (notch) or standing on a line (capsule)
+    /// Centered like a waveform, or standing on a line
     var centered = false
-    var glow = false
 
     static let count = 4
     var width: CGFloat { CGFloat(Self.count) * barWidth + CGFloat(Self.count - 1) * spacing }
@@ -273,10 +195,6 @@ final class BarsView: NSView {
             bar.anchorPoint = CGPoint(x: 0.5, y: bars.centered ? 0.5 : 0)
             bar.position = CGPoint(x: CGFloat(i) * (bars.barWidth + bars.spacing) + bars.barWidth / 2, y: bars.centered ? bars.height / 2 : 0)
             bar.bounds = CGRect(x: 0, y: 0, width: bars.barWidth, height: max(bars.barWidth, bars.height * level))
-            bar.shadowColor = NSColor(bars.color).cgColor
-            bar.shadowOpacity = bars.glow ? 0.6 : 0
-            bar.shadowRadius = 3
-            bar.shadowOffset = .zero
         }
         CATransaction.commit()
 

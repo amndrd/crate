@@ -27,13 +27,12 @@ struct Config: Equatable {
 
     var playlists: [PlaylistEntry] = []
     var shortcuts: [String: HotKey] = [:]
-    /// [now playing] section: the card when a song starts, the cover and bars around the notch
-    var capsule = true
+    /// [now playing] section: the cover and bars around the notch
     var notch = true
     /// [lyrics] section: listen to Spotify to time the words (macOS 26), and move all lyrics earlier / later (s)
     var listen = false
     var lyricsDelay = 0.0
-    /// The small strip's buttons: shown on hover (default), or always, stacked on its right
+    /// The lyrics buttons: shown on hover (default), or always, stacked on the small strip's right
     var lyricsButtonColumn = false
     /// Lines that couldn't be understood, to tell the user
     var problems: [String] = []
@@ -70,7 +69,7 @@ struct Config: Equatable {
                 let on = ["on", "yes", "true", "oui"].contains(value)
                 guard on || ["off", "no", "false", "non", "none"].contains(value) else { config.problems.append(line); continue }
                 switch key {
-                case "capsule": config.capsule = on
+                case "capsule": break   // the new-song capsule is gone: an old config.txt can still say it
                 case "notch": config.notch = on
                 default: config.problems.append(line)
                 }
