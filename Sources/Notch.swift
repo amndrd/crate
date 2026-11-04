@@ -11,8 +11,9 @@ enum NotchSize {
     static let openWidth: CGFloat = 548
     /// Open: height under the notch band
     static let openBelow: CGFloat = 118
-    /// Room around the open player for its shadow
-    static let shadow: CGFloat = 30
+    /// Room around the open player for its shadow (radius 24, 12 down): it fades out completely instead of being
+    /// cut by the edge of the window
+    static let shadow: CGFloat = 64
     static let openFlare: CGFloat = 10
 }
 
