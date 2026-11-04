@@ -29,7 +29,7 @@
 Tes playlists apparaissent comme un bac à vinyles. Au survol, le vinyle sort de sa pochette et tourne, et le fond prend la couleur de la pochette. Clique dessus, ou tape son numéro : elle se lance en aléatoire. Spotify reste caché, même s'il était fermé.
 
 <p align="center">
-  <img src="docs/screenshots/picker.gif" alt="Le menu : les vinyles sortent de leur pochette et tournent, un clic lance la playlist" width="100%">
+  <img src="docs/screenshots/picker-crate.gif" alt="Le menu : les vinyles sortent de leur pochette et tournent, un clic lance la playlist" width="100%">
 </p>
 
 ### En lecture, dans l'encoche
