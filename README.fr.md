@@ -20,27 +20,49 @@
   <a href="README.md">🇬🇧 Read in English</a>
 </p>
 
-![Crate : le choix de playlist et la fenêtre des paroles](docs/screenshots/hero.png)
+![Crate sur un Mac : le choix de playlist, le bandeau des paroles dans le coin et le morceau dans l'encoche](docs/screenshots/hero.jpg)
 
 ## Ce que ça fait
 
-| | |
-|---|---|
-| **⌘ ⌥ à · Choisir une playlist** | Une grille de pochettes apparaît. Au survol, le vinyle sort de sa pochette et tourne, et le fond prend la couleur de la pochette. Clique dessus (ou tape son numéro) : elle se lance en aléatoire. Spotify reste caché, même s'il était fermé. |
-| **⌘ ⌥ ) · Paroles** | Une fenêtre flottante affiche les paroles de la musique en cours, synchronisées ligne par ligne façon karaoké. Clique sur une ligne pour aller à ce moment de la chanson. La ligne en cours s'allume mot par mot pendant qu'elle est chantée : le bouton ♪ désactive ce mode pour allumer toute la ligne d'un coup. Le bouton à côté de × réduit la fenêtre en un petit bandeau avec seulement la ligne en cours et la suivante. Les boutons apparaissent quand la souris passe sur la fenêtre (`buttons = column` dans la section `[lyrics]` de `config.txt` les garde visibles, sur la droite du bandeau). Sur macOS 26, Crate peut [écouter le morceau](#paroles-suivent-le-chant) pour allumer chaque mot au moment exact où il est chanté. |
-| **⌘ ⌥ - · Musique suivante** | Passe à la musique suivante, depuis n'importe quelle app. |
-| **En lecture** | Sur un MacBook avec encoche, la pochette et des barres qui dansent se placent de part et d'autre de la caméra ; passe la souris sur l'encoche et elle s'ouvre en lecteur, avec la barre de progression (fais-la glisser pour avancer dans la chanson), précédent, lecture/pause et suivant. Ça se désactive dans la section `[now playing]` de `config.txt`. |
+### ⌘ ⌥ à · Choisir une playlist
+
+Tes playlists apparaissent comme un bac à vinyles. Au survol, le vinyle sort de sa pochette et tourne, et le fond prend la couleur de la pochette. Clique dessus, ou tape son numéro : elle se lance en aléatoire. Spotify reste caché, même s'il était fermé.
 
 <p align="center">
-  <img src="docs/screenshots/picker.gif" alt="Le menu : les vinyles sortent de leur pochette et tournent" width="100%">
+  <img src="docs/screenshots/picker.gif" alt="Le menu : les vinyles sortent de leur pochette et tournent, un clic lance la playlist" width="100%">
 </p>
 
-En détail :
+### En lecture, dans l'encoche
+
+Sur un MacBook avec encoche, la pochette du morceau et des barres qui dansent se placent de part et d'autre de la caméra. Passe la souris sur l'encoche : elle s'ouvre en lecteur, avec la barre de progression (fais-la glisser pour avancer dans la chanson), précédent, lecture/pause et suivant. Éloigne la souris, elle se referme.
+
+<p align="center">
+  <img src="docs/screenshots/notch.gif" alt="L'encoche s'ouvre en lecteur quand la souris passe dessus" width="90%">
+</p>
+
+### ⌘ ⌥ ) · Les paroles, synchronisées
+
+Une fenêtre flottante se déroule avec les paroles du morceau, synchronisées façon karaoké : la ligne chantée s'allume mot par mot. Le bouton ♪ allume plutôt chaque ligne d'un coup. Clique sur une ligne pour aller à ce moment de la chanson. Le bouton à côté de × réduit la fenêtre en un petit bandeau avec seulement la ligne en cours et la suivante, qui reste au-dessus de ce sur quoi tu travailles. Les boutons apparaissent quand la souris passe sur la fenêtre.
+
+<p align="center">
+  <img src="docs/screenshots/lyrics.gif" alt="La fenêtre des paroles : elle se déroule, le bouton ♪ coupe puis remet le mot à mot, un clic sur une ligne y saute" width="46%">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/strip.gif" alt="La fenêtre se réduit en un bandeau avec la ligne en cours et la suivante, puis se rouvre" width="46%">
+</p>
+
+Sur macOS 26, Crate peut [écouter le morceau](#paroles-suivent-le-chant) pour allumer chaque mot au moment exact où il est chanté.
+
+### ⌘ ⌥ - · Musique suivante
+
+Passe à la musique suivante, depuis n'importe quelle app. L'encoche et les paroles suivent.
+
+### En détail
 
 - La playlist en cours est marquée d'un point vert et son vinyle continue de tourner.
 - Si le son est coupé ou que le volume de Spotify est à 0, Crate le remonte au lancement d'une playlist.
 - Dans le menu : flèches, Entrée, Échap, et les touches 1…0. ⌘ , ouvre ta liste de playlists.
 - Dans la fenêtre des paroles (après un clic dedans), ← et → avancent ou retardent les paroles de ce morceau de 0,1 s. Crate s'en souvient.
+- Tu préfères garder les boutons du bandeau visibles ? `buttons = column` dans la section `[lyrics]` de `config.txt` les empile sur sa droite. Pas de lecteur dans l'encoche ? `notch = off` dans la section `[now playing]`.
 - Les raccourcis et les playlists sont dans un simple fichier texte, pris en compte dès que tu l'enregistres.
 - L'interface est en français ou en anglais, selon la langue de ton Mac.
 
@@ -229,7 +251,9 @@ Une seule petite app macOS en Swift et SwiftUI, sans dépendance. Elle tourne en
 |---|---|
 | `Sources/App.swift` | Raccourcis globaux (Carbon), rechargement de la config, commandes |
 | `Sources/Picker.swift` | Le bac à vinyles : pochettes, disques qui tournent, navigation au clavier |
-| `Sources/Lyrics.swift` | Fenêtre des paroles, recherche LRCLIB et lecture du format LRC |
+| `Sources/Notch.swift` | L'encoche : pochette et barres autour de la caméra, le lecteur au survol |
+| `Sources/Playback.swift` | Suit ce que joue Spotify, pour l'encoche ; les barres qui dansent |
+| `Sources/Lyrics.swift` | Fenêtre et bandeau des paroles, recherche LRCLIB et lecture du format LRC |
 | `Sources/AudioListener.swift` | `listen = on` : écoute Spotify (capture Core Audio) et reconnaissance vocale de macOS |
 | `Sources/LyricsSync.swift` | Cale les mots reconnus sur les paroles ; synchronise les paroles simples |
 | `Sources/LyricsLearner.swift` | Apprend le minutage des mots pendant l'écoute, morceau par morceau, et le garde en cache |
@@ -237,6 +261,7 @@ Une seule petite app macOS en Swift et SwiftUI, sans dépendance. Elle tourne en
 | `Sources/WebAPI.swift` | Connexion facultative à l'API Web (Premium) : `Crate connect`, lancement des playlists |
 | `Sources/Library.swift` | Pochettes et noms des playlists, avec leur cache |
 | `Sources/Config.swift` | Lecture de `config.txt`, raccourcis clavier |
+| `Sources/Shared.swift` | Fenêtres flottantes, messages, français ou anglais |
 | `install.sh` · `build.sh` · `uninstall.sh` | Compiler, installer, désinstaller |
 
 Pour compiler à la main : `./build.sh`, qui produit `Crate.app`.

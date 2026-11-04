@@ -20,27 +20,49 @@
   <a href="README.fr.md">🇫🇷 Lire en français</a>
 </p>
 
-![Crate: the playlist picker and the lyrics window](docs/screenshots/hero.png)
+![Crate on a Mac: the playlist picker, the lyrics strip in the corner and the song in the notch](docs/screenshots/hero.jpg)
 
 ## What it does
 
-| | |
-|---|---|
-| **⌘ ⌥ 0 · Pick a playlist** | A grid of record sleeves pops up. Hover one and the vinyl slides out and spins, the background takes the color of the cover. Click it (or press its number) and it starts playing on shuffle. Spotify stays hidden, even if it was closed. |
-| **⌘ ⌥ - · Lyrics** | A floating window shows the lyrics of the current song, synced line by line like karaoke. Click a line to jump to that moment in the song. The line being sung lights up word by word: the ♪ button turns that off, to light the whole line up at once. The button next to × shrinks the window to a small strip with just the current and next lines. The buttons show when the mouse is over the window (`buttons = column` in the `[lyrics]` section of `config.txt` keeps them in view, on the strip's right). On macOS 26, Crate can [listen to the song](#lyrics-follow-singing) to light each word up exactly when it's sung. |
-| **⌘ ⌥ = · Next track** | Skips to the next song, from any app. |
-| **Now playing** | On a MacBook with a notch, the cover and dancing bars sit on each side of the camera; move the mouse over the notch and it opens into a player with the progress bar (drag it to move in the song), previous, play/pause and next. It can be turned off in the `[now playing]` section of `config.txt`. |
+### ⌘ ⌥ 0 · Pick a playlist
+
+Your playlists pop up as a crate of records. Hover a sleeve and its vinyl slides out and spins, while the background takes on the cover's color. Click it, or press its number, and it starts playing on shuffle. Spotify stays out of sight, even if it was closed.
 
 <p align="center">
-  <img src="docs/screenshots/picker.gif" alt="The picker: records slide out of their sleeves and spin" width="100%">
+  <img src="docs/screenshots/picker.gif" alt="The picker: records slide out of their sleeves and spin, a click starts the playlist" width="100%">
 </p>
 
-Some details:
+### Now playing, in the notch
+
+On a MacBook with a notch, the song's cover and a few dancing bars sit on each side of the camera. Move the mouse over the notch and it opens into a player: progress bar (drag it to move in the song), previous, play/pause and next. Move away and it folds back.
+
+<p align="center">
+  <img src="docs/screenshots/notch.gif" alt="The notch opens into a player when the mouse goes over it" width="90%">
+</p>
+
+### ⌘ ⌥ - · Lyrics, in sync
+
+A floating window unrolls with the lyrics of the song, synced like karaoke: the line being sung lights up word by word. The ♪ button lights whole lines up instead. Click a line to jump to that moment in the song. The button next to × shrinks the window to a small strip with just the current and next lines, which stays on top of whatever you're working on. The buttons show when the mouse is over the window.
+
+<p align="center">
+  <img src="docs/screenshots/lyrics.gif" alt="The lyrics window: it unrolls, the ♪ button turns word by word off and on, a click on a line jumps there" width="46%">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/strip.gif" alt="The window shrinks to a strip with the current and next lines, then expands back" width="46%">
+</p>
+
+On macOS 26, Crate can [listen to the song](#lyrics-follow-singing) to light each word up exactly when it's sung.
+
+### ⌘ ⌥ = · Next track
+
+Skips to the next song, from any app. The notch and the lyrics follow along.
+
+### Some details
 
 - The playlist that's playing is marked with a green dot and its record keeps spinning.
 - If the sound is muted, or Spotify's volume is at 0, Crate turns it back up when you start a playlist.
 - Arrow keys, Return, Escape and the number keys 1…0 work in the picker. ⌘ , opens your playlist list.
 - In the lyrics window (after a click in it), ← and → move this song's lyrics 0.1 s earlier or later. Crate remembers it.
+- Rather keep the strip's buttons in view? `buttons = column` in the `[lyrics]` section of `config.txt` stacks them on its right. No notch player? `notch = off` in the `[now playing]` section.
 - Your shortcuts and playlists live in a plain text file, and changes apply as soon as you save it.
 - The interface is in English or French, following your Mac's language.
 
@@ -229,7 +251,9 @@ A single small macOS app written in Swift and SwiftUI, with no dependencies. It 
 |---|---|
 | `Sources/App.swift` | Global shortcuts (Carbon hot keys), config reloading, commands |
 | `Sources/Picker.swift` | The record crate: sleeves, spinning vinyls, keyboard navigation |
-| `Sources/Lyrics.swift` | Lyrics window, LRCLIB lookup and LRC parsing |
+| `Sources/Notch.swift` | The notch: cover and bars around the camera, the player on hover |
+| `Sources/Playback.swift` | Follows what Spotify plays, for the notch; the dancing bars |
+| `Sources/Lyrics.swift` | Lyrics window and strip, LRCLIB lookup and LRC parsing |
 | `Sources/AudioListener.swift` | `listen = on`: hears Spotify (Core Audio tap) and macOS speech recognition |
 | `Sources/LyricsSync.swift` | Lines the recognized words up with the lyrics; times plain lyrics |
 | `Sources/LyricsLearner.swift` | Learns word timings while you listen, song by song, and caches them |
@@ -237,6 +261,7 @@ A single small macOS app written in Swift and SwiftUI, with no dependencies. It 
 | `Sources/WebAPI.swift` | Optional Web API connection (Premium): `Crate connect`, starting playlists |
 | `Sources/Library.swift` | Covers and playlist names, with their cache |
 | `Sources/Config.swift` | Reads `config.txt`, keyboard shortcuts |
+| `Sources/Shared.swift` | Floating panels, toasts, English or French |
 | `install.sh` · `build.sh` · `uninstall.sh` | Build, install, remove |
 
 To build by hand: `./build.sh`, which produces `Crate.app`.
