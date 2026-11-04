@@ -303,8 +303,8 @@ final class Player: ObservableObject {
         tick()
     }
 
-    /// Tells the learner what's playing, once the lyrics are known
-    private func followed() {
+    /// Tells the learner what's playing, once the lyrics are known (and again when listening is turned on)
+    func followed() {
         LyricsLearner.shared.follow(track: track?.isAd == false ? track?.id : nil, lines: lyrics?.synced,
                                     plain: lyrics?.instrumental == true ? nil : lyrics?.plain, duration: track?.duration ?? 0,
                                     playing: track?.isPlaying == true)
@@ -670,6 +670,9 @@ final class LyricsController {
 
     /// config.txt "delay"
     var delay = 0.0 { didSet { player?.delay = delay } }
+
+    /// "listen" changed in config.txt: start (or stop) listening to the song playing now, not from the next one
+    func listeningChanged() { player?.followed() }
 
     func show() {
         let player = Player()

@@ -338,11 +338,13 @@ final class AudioListener {
         lock.unlock()
         let analyzer = self.analyzer, results = self.results
         self.analyzer = nil
-        Task {
+        // Keeps this listener alive until the last words are in (Crate already let go of it)
+        Task { [self] in
             try? await analyzer?.finalizeAndFinishThroughEndOfInput()
             // The results don't always end on their own: give the last words 25 s, then let go
             try? await Task.sleep(for: .seconds(25))
             results?.cancel()
+            _ = self
         }
     }
 }
