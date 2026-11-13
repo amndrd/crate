@@ -7,3 +7,8 @@ covers/*
 DerivedData/
 *.xcuserstate
 *.dSYM/
+
+# Editors
+.vscode/
+.idea/
+*.swp
